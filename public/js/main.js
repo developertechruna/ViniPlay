@@ -64,7 +64,7 @@ function renderIcons() {
  */
 function initializeSse() {
     console.log('[SSE] Initializing Server-Sent Events connection...');
-    const eventSource = new EventSource('/api/events');
+    const eventSource = new EventSource(withBase('/api/events'));
 
     eventSource.onopen = () => {
         console.log('[SSE] Connection to server opened.');
@@ -113,7 +113,7 @@ function initializeSse() {
     eventSource.addEventListener('activity-update', (event) => {
         const data = JSON.parse(event.data);
         // This will only do something if the admin page is currently active.
-        if (window.location.pathname.includes('/activity')) {
+        if (stripBase(window.location.pathname).startsWith('/activity')) {
             handleActivityUpdate(data.live);
         }
     });
@@ -124,7 +124,7 @@ function initializeSse() {
         const { channel } = JSON.parse(event.data);
 
         // Check which player is active and change its channel
-        const currentPage = window.location.pathname;
+        const currentPage = stripBase(window.location.pathname);
         if (currentPage.startsWith('/tvguide') || currentPage === '/') {
             // Stop the main player if it's open, then play the new channel.
             stopAndCleanupPlayer().then(() => {
@@ -461,12 +461,12 @@ function setupCoreEventListeners() {
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
             console.log('[MAIN] Tab is visible again, refreshing data for current page.');
-            const currentPage = window.location.pathname;
-            if (currentPage.includes('/dvr')) {
+            const currentPage = stripBase(window.location.pathname);
+            if (currentPage.startsWith('/dvr')) {
                 initDvrPage();
-            } else if (currentPage.includes('/notifications')) {
+            } else if (currentPage.startsWith('/notifications')) {
                 loadAndScheduleNotifications();
-            } else if (currentPage.includes('/activity')) { // NEW
+            } else if (currentPage.startsWith('/activity')) {
                 initActivityPage();
             }
         }
@@ -578,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Register Service Worker
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         console.log('[APP_START] Service Worker and Push API are supported by browser.');
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register(withBase('/sw.js'), { scope: withBase('/') })
             .then(swReg => {
                 console.log('[APP_START] Service Worker registered successfully:', swReg);
                 appState.swRegistration = swReg;

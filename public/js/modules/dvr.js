@@ -5,6 +5,7 @@
 
 import { UIElements, dvrState, guideState, appState } from './state.js';
 import { apiFetch } from './api.js';
+import { withBase } from './basePath.js';
 import { showNotification, showConfirm, openModal, closeModal } from './ui.js';
 import { handleSearchAndFilter } from './guide.js';
 // MODIFIED: Import the corrected navigation function from notification.js
@@ -103,7 +104,7 @@ async function playTimeshiftStream(job) {
     // 1. Stop any existing stream in the main player
     await stopAndCleanupPlayer();
 
-    const streamUrl = `/api/dvr/timeshift/${job.id}`;
+    const streamUrl = withBase(`/api/dvr/timeshift/${job.id}`);
     console.log(`[DVR_TIMESHIFT] Starting playback for URL: ${streamUrl}`);
     videoTitle.textContent = `${job.programTitle} (Recording...)`;
 
@@ -152,7 +153,7 @@ async function playCompletedTsFile(recording) {
 
     await stopAndCleanupPlayer(); // Clean up main player first
 
-    const streamUrl = `/dvr/${recording.filename}`;
+    const streamUrl = withBase(`/dvr/${recording.filename}`);
     console.log(`[DVR_PLAYBACK] Starting playback for completed TS file: ${streamUrl}`);
     videoTitle.textContent = recording.programTitle;
 
@@ -454,7 +455,7 @@ export function setupDvrEventListeners() {
             } else {
                 // Use the original, simpler player for non-ts files like .mp4
                 UIElements.recordingTitle.textContent = recording.programTitle;
-                UIElements.recordingVideoElement.src = `/dvr/${recording.filename}`;
+                UIElements.recordingVideoElement.src = withBase(`/dvr/${recording.filename}`);
                 openModal(UIElements.recordingPlayerModal);
             }
         } else if (e.target.closest('.delete-recording-btn')) {

@@ -9,6 +9,7 @@ import { UIElements, guideState, appState } from './state.js';
 import { showNotification } from './ui.js';
 // MODIFIED: Import stopStream to explicitly kill the server process.
 import { saveUserSetting, stopStream, startRedirectStream, stopRedirectStream } from './api.js';
+import { withBase } from './basePath.js';
 
 const MAX_RECENT_LINKS = 10;
 let currentStreamUrl = null; // NEW: Track the URL of the current stream
@@ -369,7 +370,7 @@ function playVODStream(url, streamType) {
 
         // For the direct player with Direct Play OFF, ALWAYS use /stream endpoint
         // This allows the server to handle transcoding and avoids CORS issues
-        const streamUrlToPlay = `/stream?url=${encodeURIComponent(url)}&profileId=${profileId}&userAgentId=${userAgentId}`;
+        const streamUrlToPlay = withBase(`/stream?url=${encodeURIComponent(url)}&profileId=${profileId}&userAgentId=${userAgentId}`);
 
         console.log(`[DEBUG] playVODStream: Stream URL: ${streamUrlToPlay}`);
         logToPlayerConsole(`Stream URL: ${streamUrlToPlay}`);
@@ -494,7 +495,7 @@ function playLiveStream(url, streamType) {
             showNotification(errorMsg, true);
             return;
         }
-        streamUrlToPlay = `/stream?url=${encodeURIComponent(url)}&profileId=${profileIdToUse}&userAgentId=${userAgentId}`;
+        streamUrlToPlay = withBase(`/stream?url=${encodeURIComponent(url)}&profileId=${profileIdToUse}&userAgentId=${userAgentId}`);
         logToPlayerConsole(`Proxy URL: ${streamUrlToPlay}`);
 
     } else {

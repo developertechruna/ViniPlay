@@ -6,6 +6,7 @@
 
 import { showLoginScreen } from './auth.js';
 import { showNotification } from './ui.js';
+import { withBase } from './basePath.js';
 
 /**
  * A wrapper for the fetch API to handle common tasks like error handling and auth failures.
@@ -14,10 +15,11 @@ import { showNotification } from './ui.js';
  * @returns {Promise<Response|null>} - The fetch Response object or null on failure.
  */
 export async function apiFetch(url, options = {}) {
-    console.log(`[API_FETCH] Requesting: ${options.method || 'GET'} ${url}`);
+    const targetUrl = withBase(url);
+    console.log(`[API_FETCH] Requesting: ${options.method || 'GET'} ${targetUrl}`);
     try {
-        const response = await fetch(url, options);
-        console.log(`[API_FETCH] Response received for ${url}: Status ${response.status} ${response.statusText}`);
+        const response = await fetch(targetUrl, options);
+        console.log(`[API_FETCH] Response received for ${targetUrl}: Status ${response.status} ${response.statusText}`);
 
         // If the session expired, the server will return a 401 Unauthorized
         if (response.status === 401) {
@@ -32,10 +34,10 @@ export async function apiFetch(url, options = {}) {
             try {
                 errorData = await response.json(); // Try to parse error message if available
             } catch (e) {
-                console.warn(`[API_FETCH] Could not parse error response as JSON for ${url}:`, e);
+                console.warn(`[API_FETCH] Could not parse error response as JSON for ${targetUrl}:`, e);
                 errorData.error = response.statusText || 'An unknown error occurred.';
             }
-            console.error(`[API_FETCH] API call failed for ${url}: Status ${response.status}, Error: ${errorData.error || 'No specific error message.'}`);
+            console.error(`[API_FETCH] API call failed for ${targetUrl}: Status ${response.status}, Error: ${errorData.error || 'No specific error message.'}`);
             showNotification(errorData.error || `API Error: ${response.status} ${response.statusText}`, true);
             return null;
         }
@@ -43,7 +45,7 @@ export async function apiFetch(url, options = {}) {
         console.log(`[API_FETCH] API call to ${url} successful.`);
         return response;
     } catch (error) {
-        console.error(`[API_FETCH] Network or unexpected error during fetch for ${url}:`, error);
+        console.error(`[API_FETCH] Network or unexpected error during fetch for ${targetUrl}:`, error);
         showNotification("Could not connect to the server. Please check your network or server status.", true);
         return null;
     }

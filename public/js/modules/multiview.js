@@ -6,6 +6,7 @@
 
 import { appState, guideState, UIElements } from './state.js';
 import { apiFetch, stopStream, startRedirectStream, stopRedirectStream } from './api.js';
+import { withBase } from './basePath.js';
 import { showNotification, openModal, closeModal, showConfirm } from './ui.js';
 import { ICONS } from './icons.js';
 
@@ -675,7 +676,7 @@ async function playChannelInWidget(widgetId, channel, gridstackItemContentEl) {
         profileIdToUse = hasNVIDIA ? 'ffmpeg-fmp4-nvidia' : 'ffmpeg-fmp4';
         console.log(`[MultiView] Auto-selected ${hasNVIDIA ? 'NVIDIA' : 'CPU'} fMP4 profile for VOD`);
 
-        streamUrlToPlay = `/stream?url=${encodeURIComponent(channel.url)}&profileId=${profileIdToUse}&userAgentId=${userAgentId}`;
+        streamUrlToPlay = withBase(`/stream?url=${encodeURIComponent(channel.url)}&profileId=${profileIdToUse}&userAgentId=${userAgentId}`);
         useNativeVideo = true;
     } else {
         // For live streams, use existing logic
@@ -689,7 +690,7 @@ async function playChannelInWidget(widgetId, channel, gridstackItemContentEl) {
 
         streamUrlToPlay = profile.command === 'redirect'
             ? channel.url
-            : `/stream?url=${encodeURIComponent(channel.url)}&profileId=${profileIdToUse}&userAgentId=${userAgentId}`;
+            : withBase(`/stream?url=${encodeURIComponent(channel.url)}&profileId=${profileIdToUse}&userAgentId=${userAgentId}`);
 
         if (profile.command === 'redirect') {
             const historyId = await startRedirectStream(channel.url, channel.id, channel.name, channel.logo);

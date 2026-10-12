@@ -16,6 +16,7 @@ import { finalizeGuideLoad, handleGuideLoad } from './guide.js';
 import { fetchConfig } from './api.js';
 import { initActivityPage } from './admin.js';
 import { initVodPage } from './vod.js';
+import { withBase, stripBase } from './basePath.js';
 
 
 let confirmCallback = null;
@@ -362,8 +363,7 @@ export const tempBlockConfigReload = () => {
 export const handleRouteChange = () => {
     const wasMultiView = currentPage.startsWith('/multiview');
     const wasPlayer = currentPage.startsWith('/player');
-    const rawPath = window.location.pathname;
-    const path = rawPath.replace(/^\/viniplay(\/|$)/, "/") || "/";
+    const path = stripBase(window.location.pathname);
 
     if (wasMultiView && !path.startsWith('/multiview')) {
         if (isMultiViewActive()) {
@@ -375,7 +375,7 @@ export const handleRouteChange = () => {
                     proceedWithRouteChange(path);
                 }
             );
-            window.history.pushState({}, currentPage, window.location.origin + "/viniplay" + (currentPage === "/" ? "" : currentPage));
+            window.history.pushState({}, currentPage, window.location.origin + withBase(currentPage));
             return;
         } else {
             cleanupMultiView();
@@ -392,7 +392,7 @@ export const handleRouteChange = () => {
                     proceedWithRouteChange(path);
                 }
             );
-            window.history.pushState({}, currentPage, window.location.origin + "/viniplay" + (currentPage === "/" ? "" : currentPage));
+            window.history.pushState({}, currentPage, window.location.origin + withBase(currentPage));
             return;
         } else {
             cleanupDirectPlayer();
@@ -550,10 +550,9 @@ async function proceedWithRouteChange(path) {
  * @param {string} path - The new path to navigate to.
  */
 export const navigate = (path) => {
-    const rawPath = window.location.pathname;
-    const current = rawPath.replace(/^\/viniplay(\/|$)/, "/") || "/";
+    const current = stripBase(window.location.pathname);
     if (current !== path) {
-        window.history.pushState({}, path, window.location.origin + "/viniplay" + (path === "/" ? "" : path));
+        window.history.pushState({}, path, window.location.origin + withBase(path));
     }
     handleRouteChange();
 };

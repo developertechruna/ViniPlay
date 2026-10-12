@@ -5,6 +5,7 @@
  */
 
 import { showNotification, showConfirm, navigate, openModal, closeModal } from './ui.js';
+import { stripBase } from './basePath.js';
 import { UIElements, guideState, appState } from './state.js';
 import { handleSearchAndFilter, scrollToChannel, openProgramDetails } from './guide.js';
 import { getVapidKey, subscribeToPush, addProgramNotification, getProgramNotifications, deleteProgramNotification, unsubscribeFromPush, clearPastNotifications } from './api.js';
@@ -437,7 +438,7 @@ export const navigateToProgramInGuide = async (channelId, programStart, programI
         const stableChannelIdSuffix = channelId.includes('_') ? '_' + channelId.split('_').pop() : channelId;
 
         // No need to navigate again if we are already on the guide page from the deep link
-        const currentNavPath = window.location.pathname.replace(/^\/viniplay(\/|$)/, "/") || "/";
+        const currentNavPath = stripBase(window.location.pathname);
         if (currentNavPath !== '/tvguide' && currentNavPath !== '/') {
             navigate('/tvguide');
             // Wait a moment for the page switch to happen visually.

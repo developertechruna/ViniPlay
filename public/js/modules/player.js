@@ -6,6 +6,7 @@
 import { appState, guideState, UIElements } from './state.js';
 // MODIFIED: Added stopStream to the import
 import { saveUserSetting, stopStream, startRedirectStream, stopRedirectStream } from './api.js';
+import { withBase } from './basePath.js';
 import { showNotification, openModal, closeModal } from './ui.js';
 import { castState, loadMedia, setLocalPlayerState } from './cast.js';
 import { logToPlayerConsole } from './player_direct.js';
@@ -232,7 +233,7 @@ export const playChannel = (url, name, channelId) => {
         return showNotification("Stream profile not found.", true);
     }
 
-    const streamUrlToPlay = profile.command === 'redirect' ? url : `/viniplay/stream?url=${encodeURIComponent(url)}&profileId=${profileId}&userAgentId=${userAgentId}`;
+    const streamUrlToPlay = profile.command === 'redirect' ? url : withBase(`/stream?url=${encodeURIComponent(url)}&profileId=${profileId}&userAgentId=${userAgentId}`);
     const channel = guideState.channels.find(c => c.id === channelId);
     const logo = channel ? channel.logo : '';
 
@@ -429,7 +430,7 @@ export const playVOD = async (url, title, logo = '') => {
     // VODs always go through the /stream endpoint now, unless the profile is 'redirect'
     const streamUrlToPlay = profile.command === 'redirect'
         ? url // If redirect, still use mpegts.js but with the direct URL
-        : `/viniplay/stream?url=${encodeURIComponent(url)}&profileId=${profile.id}&userAgentId=${userAgentId}&vodName=${encodeURIComponent(title)}&vodLogo=${encodeURIComponent(logo)}&isVod=true`;
+        : withBase(`/stream?url=${encodeURIComponent(url)}&profileId=${profile.id}&userAgentId=${userAgentId}&vodName=${encodeURIComponent(title)}&vodLogo=${encodeURIComponent(logo)}&isVod=true`);
 
     console.log(`[VOD_PLAYER] Final mpegts.js stream URL: ${streamUrlToPlay}`);
     logToPlayerConsole(`Final stream URL: ${streamUrlToPlay}`);

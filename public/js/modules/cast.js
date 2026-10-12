@@ -32,7 +32,7 @@ async function stopCastStream(streamUrl) {
     try {
         console.log(`[CAST] Sending stop request for Cast stream: ${streamUrl}`);
         const activeCastProfileId = guideState.settings?.activeCastProfileId || 'cast-default';
-        const response = await fetch('/api/stream/stop', {
+        const response = await fetch(withBase('/api/stream/stop'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: streamUrl, profileId: activeCastProfileId })
@@ -252,7 +252,7 @@ export async function loadMedia(url, name, logo) {
     // Generate and append cast authentication token
     try {
         console.log('[CAST] Requesting authentication token...');
-        const response = await fetch('/api/cast/generate-token', {
+        const response = await fetch(withBase('/api/cast/generate-token'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ streamUrl: url })

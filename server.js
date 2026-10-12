@@ -273,6 +273,62 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
     }
 });
 
+// --- Subpath and Base Path Configuration ---
+const CONFIGURED_BASE_PATH = (process.env.BASE_PATH || '').replace(/\/+$/, '');
+
+function getEffectiveBasePath(req) {
+    if (CONFIGURED_BASE_PATH) {
+        return CONFIGURED_BASE_PATH.startsWith('/') ? CONFIGURED_BASE_PATH : '/' + CONFIGURED_BASE_PATH;
+    }
+    const headerPrefix = req && req.headers ? req.headers['x-forwarded-prefix'] : null;
+    if (headerPrefix) {
+        const clean = headerPrefix.split(',')[0].trim().replace(/\/+$/, '');
+        return clean ? (clean.startsWith('/') ? clean : '/' + clean) : '';
+    }
+    return '';
+}
+
+function serveIndexHtml(req, res) {
+    const indexPath = path.join(PUBLIC_DIR, 'index.html');
+    fs.readFile(indexPath, 'utf8', (err, html) => {
+        if (err) {
+            console.error('[SERVER] Failed to read index.html:', err);
+            return res.status(500).send('Error loading index.html');
+        }
+        const basePath = getEffectiveBasePath(req);
+        let outputHtml = html;
+        const baseInjection = `\n    <meta name="base-path" content="${basePath}">\n    <script>window.__VINI_BASE_PATH__ = "${basePath}";</script>`;
+        outputHtml = outputHtml.replace('<head>', `<head>${baseInjection}`);
+
+        if (basePath) {
+            outputHtml = outputHtml
+                .replace(/href="\/viniplay\.png"/g, `href="${basePath}/viniplay.png"`)
+                .replace(/href="\/manifest\.json"/g, `href="${basePath}/manifest.json"`)
+                .replace(/src="\/js\//g, `src="${basePath}/js/`);
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+        res.setHeader('Cache-Control', 'public, no-cache, must-revalidate');
+        res.send(outputHtml);
+    });
+}
+
+// Subpath normalization middleware
+app.use((req, res, next) => {
+    const basePath = getEffectiveBasePath(req);
+    if (basePath) {
+        if (req.url === basePath) {
+            return res.redirect(301, `${basePath}/`);
+        } else if (req.url.startsWith(basePath + '/') || req.url.startsWith(basePath + '?')) {
+            req.url = req.url.slice(basePath.length) || '/';
+            if (!req.url.startsWith('/') && !req.url.startsWith('?')) {
+                req.url = '/' + req.url;
+            }
+        }
+    }
+    next();
+});
+
 // --- Middleware ---
 // 1. Smart Caching for API: Allow cache presence but FORCE revalidation every time.
 // 'no-cache' = "Check with server before using cached copy".
@@ -284,6 +340,7 @@ app.use('/api', (req, res, next) => {
 // 2. Smart Caching for Static Files:
 // Allow browser to cache index.html/js, but REQUIRE it to check if they changed (304 Not Modified)
 app.use(express.static(PUBLIC_DIR, {
+    index: false,
     setHeaders: (res, path) => {
         if (path.endsWith('index.html') || path.endsWith('.js')) {
             res.set('Cache-Control', 'public, no-cache, must-revalidate');
@@ -292,6 +349,9 @@ app.use(express.static(PUBLIC_DIR, {
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+app.get('/', serveIndexHtml);
+app.get('/index.html', serveIndexHtml);
 
 const updateAndScheduleSourceRefreshes = () => {
     console.log('[SCHEDULER] Updating and scheduling all source refreshes...');
@@ -382,7 +442,7 @@ app.use(
         secret: sessionSecret,
         resave: false,
         saveUninitialized: false,
-        cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.COOKIE_SECURE === 'true' },
+        cookie: { path: '/', maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.COOKIE_SECURE === 'true' },
     })
 );
 
@@ -5108,7 +5168,7 @@ app.get('*', (req, res) => {
     if (fs.existsSync(filePath) && fs.lstatSync(filePath).isFile()) {
         return res.sendFile(filePath);
     }
-    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    serveIndexHtml(req, res);
 });
 
 // --- Server Start ---

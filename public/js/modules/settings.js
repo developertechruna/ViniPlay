@@ -1206,7 +1206,7 @@ async function refreshLogInfo() {
  */
 async function handleDownloadLogs() {
     try {
-        window.location.href = '/api/logs/download';
+        window.location.href = withBase('/api/logs/download');
         showNotification('Downloading logs...', false, 3000);
     } catch (error) {
         console.error('[SETTINGS] Error downloading logs:', error);
@@ -1781,7 +1781,7 @@ export function setupSettingsEventListeners() {
     // --- Backup & Restore ---
     UIElements.exportSettingsBtn.addEventListener('click', () => {
         // Trigger download via direct link
-        window.location.href = '/api/settings/export';
+        window.location.href = withBase('/api/settings/export');
     });
 
     UIElements.importSettingsBtn.addEventListener('click', () => {

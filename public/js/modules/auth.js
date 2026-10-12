@@ -318,7 +318,7 @@ export async function checkAuthStatus() {
     loginError.classList.add('hidden'); // Clear any previous errors
 
     try {
-        const res = await fetch('/api/auth/status');
+        const res = await fetch(withBase('/api/auth/status'));
         if (!res.ok) {
             console.warn(`[AUTH] /api/auth/status returned non-OK status: ${res.status} ${res.statusText}`);
         }
@@ -330,7 +330,7 @@ export async function checkAuthStatus() {
             showApp(status.user);
         } else {
             console.log('[AUTH] User not logged in. Checking if setup is needed...');
-            const setupRes = await fetch('/api/auth/needs-setup');
+            const setupRes = await fetch(withBase('/api/auth/needs-setup'));
             if (!setupRes.ok) {
                 console.warn(`[AUTH] /api/auth/needs-setup returned non-OK status: ${setupRes.status} ${setupRes.statusText}`);
             }
@@ -378,7 +378,7 @@ export function setupAuthEventListeners() {
         const password = loginPassword.value;
 
         try {
-            const res = await fetch('/api/auth/login', {
+            const res = await fetch(withBase('/api/auth/login'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -409,7 +409,7 @@ export function setupAuthEventListeners() {
         const password = setupPassword.value;
 
         try {
-            const res = await fetch('/api/auth/setup-admin', {
+            const res = await fetch(withBase('/api/auth/setup-admin'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -435,7 +435,7 @@ export function setupAuthEventListeners() {
     logoutBtn.addEventListener('click', async () => {
         console.log('[AUTH_EVENT] Logout button clicked.');
         try {
-            const res = await fetch('/api/auth/logout', { method: 'POST' });
+            const res = await fetch(withBase('/api/auth/logout'), { method: 'POST' });
             if (!res.ok) {
                 console.warn(`[AUTH_EVENT] Logout API returned non-OK status: ${res.status}`);
             }
