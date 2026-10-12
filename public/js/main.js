@@ -20,6 +20,7 @@ import { setupDvrEventListeners, handleDvrChannelClick, initDvrPage } from './mo
 import { handleMultiViewChannelClick, populateChannelSelector, initMultiView } from './modules/multiview.js';
 import { setupDirectPlayerEventListeners, initDirectPlayer } from './modules/player_direct.js';
 import { initVodPage } from './modules/vod.js';
+import { withBase, stripBase } from './modules/basePath.js';
 import { ICONS } from './modules/icons.js'; // MODIFIED: Import the new icon library
 //-- ENHANCEMENT: Import the new handler for channel selector clicks from the admin page.
 import { initActivityPage, setupAdminEventListeners, handleActivityUpdate, handleAdminChannelClick } from './modules/admin.js';

@@ -11,6 +11,7 @@ import { showNotification, openModal, closeModal, showConfirm, setButtonLoadingS
 import { handleGuideLoad } from './guide.js';
 import { navigate } from './ui.js';
 import { ICONS } from './icons.js';
+import { withBase } from './basePath.js';
 
 let currentSourceTypeForEditor = 'url';
 let hardwareChecked = false; // Flag to prevent re-checking hardware on every UI update

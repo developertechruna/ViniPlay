@@ -6,6 +6,7 @@
 import { showNotification } from './ui.js';
 import { UIElements, guideState, appState } from './state.js';
 import { stopStream } from './api.js';
+import { withBase } from './basePath.js';
 
 const APPLICATION_ID = 'CC1AD845'; // Default Media Receiver App ID
 

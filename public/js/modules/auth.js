@@ -5,7 +5,8 @@
 
 import { UIElements, appState } from './state.js';
 import { initMainApp } from '../main.js';
-import { showNotification } from './ui.js'; // Import showNotification for consistent error display
+import { showNotification } from './ui.js';
+import { withBase } from './basePath.js'; // Import showNotification for consistent error display
 
 /**
  * Populates the UIElements object with references to DOM elements.

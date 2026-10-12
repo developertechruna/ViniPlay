@@ -9,6 +9,7 @@ import { openModal, closeModal, showNotification } from './ui.js';
 import { ICONS } from './icons.js';
 import { saveUserSetting, fetchVodLibrary, fetchSeriesDetails } from './api.js';
 import { playVOD } from './player.js';
+import { withBase } from './basePath.js';
 
 // Local state for VOD page
 const vodState = {
