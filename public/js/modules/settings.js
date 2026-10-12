@@ -716,6 +716,8 @@ export const updateUIFromSettings = async () => {
     settings.playerLogLevel = settings.playerLogLevel || 'warning';
     settings.dvrLogLevel = settings.dvrLogLevel || 'warning';
     settings.notificationLeadTime = settings.notificationLeadTime ?? 10;
+    settings.vodMinWatchTimeSeconds = settings.vodMinWatchTimeSeconds ?? 5;
+    settings.vodProgressSyncIntervalSeconds = settings.vodProgressSyncIntervalSeconds ?? 5;
 
     settings.dvr = settings.dvr || {};
     settings.dvr.preBufferMinutes = settings.dvr.preBufferMinutes ?? 1;
@@ -731,6 +733,8 @@ export const updateUIFromSettings = async () => {
     UIElements.playerLogLevelSelect.value = settings.playerLogLevel;
     UIElements.dvrLogLevelSelect.value = settings.dvrLogLevel;
     UIElements.notificationLeadTimeInput.value = settings.notificationLeadTime;
+    if (UIElements.vodMinWatchTimeInput) UIElements.vodMinWatchTimeInput.value = settings.vodMinWatchTimeSeconds;
+    if (UIElements.vodSyncIntervalInput) UIElements.vodSyncIntervalInput.value = settings.vodProgressSyncIntervalSeconds;
 
     // Update DVR inputs
     if (UIElements.dvrPreBufferInput) UIElements.dvrPreBufferInput.value = settings.dvr.preBufferMinutes;
@@ -1444,6 +1448,30 @@ export function setupSettingsEventListeners() {
         }
         await saveSettingAndNotify(saveGlobalSetting, { notificationLeadTime: value });
     });
+
+    if (UIElements.vodMinWatchTimeInput) {
+        UIElements.vodMinWatchTimeInput.addEventListener('change', async (e) => {
+            const value = parseInt(e.target.value, 10);
+            if (isNaN(value) || value < 1) {
+                showNotification('Min watch time must be at least 1 second.', true);
+                e.target.value = guideState.settings.vodMinWatchTimeSeconds || 5;
+                return;
+            }
+            await saveSettingAndNotify(saveGlobalSetting, { vodMinWatchTimeSeconds: value });
+        });
+    }
+
+    if (UIElements.vodSyncIntervalInput) {
+        UIElements.vodSyncIntervalInput.addEventListener('change', async (e) => {
+            const value = parseInt(e.target.value, 10);
+            if (isNaN(value) || value < 1) {
+                showNotification('Sync interval must be at least 1 second.', true);
+                e.target.value = guideState.settings.vodProgressSyncIntervalSeconds || 5;
+                return;
+            }
+            await saveSettingAndNotify(saveGlobalSetting, { vodProgressSyncIntervalSeconds: value });
+        });
+    }
 
     // --- Hardware Info Modal ---
     UIElements.hardwareInfoBtn.addEventListener('click', () => openModal(UIElements.hardwareInfoModal));

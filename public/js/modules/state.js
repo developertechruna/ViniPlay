@@ -29,6 +29,8 @@ export const guideState = {
         // Add a default for channelColumnWidth
         channelColumnWidth: window.innerWidth < 768 ? 64 : 180, // Default based on screen size
         notificationLeadTime: 10, // Default notification lead time in minutes
+        vodMinWatchTimeSeconds: 5, // Default min watch time in seconds
+        vodProgressSyncIntervalSeconds: 5, // Default progress sync interval in seconds
         multiviewLayouts: [], // To store saved layouts for the user
         adminPageSize: 25, // NEW: Default page size for the admin history table
         vodDirectPlayEnabled: false, // Default to false (use mpegts.js/profiles)

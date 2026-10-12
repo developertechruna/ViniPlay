@@ -1,3 +1,4 @@
+import { guideState } from './state.js';
 /**
  * watchTracker.js
  * Tracks video playback progress and syncs it with the backend API.
@@ -13,7 +14,10 @@ let syncInterval = null;
 let lastSyncedTime = -1;
 let videoElementRef = null;
 
-const SYNC_INTERVAL_MS = 10000; // Sync every 10 seconds
+function getSyncIntervalMs() {
+    const sec = parseInt(guideState?.settings?.vodProgressSyncIntervalSeconds, 10);
+    return (sec && sec >= 1 ? sec : 5) * 1000;
+}
 
 function getCurrentPlaybackPosition() {
     if (!videoElementRef) return 0;
@@ -38,7 +42,7 @@ export async function sendProgressUpdate(force = false) {
     const duration = getMediaDuration();
 
     // If change is less than 3 seconds and not forced, skip
-    if (!force && Math.abs(currentPos - lastSyncedTime) < 3) return;
+    if (!force && Math.abs(currentPos - lastSyncedTime) < 2) return;
 
     lastSyncedTime = currentPos;
 
@@ -75,7 +79,8 @@ function sendBeaconUpdate() {
     if (!activeContext || !videoElementRef) return;
     const currentPos = getCurrentPlaybackPosition();
     const duration = getMediaDuration();
-    if (currentPos < 15) return;
+    const minTime = parseInt(guideState?.settings?.vodMinWatchTimeSeconds, 10) || 5;
+    if (currentPos < minTime) return;
 
     const payload = {
         contentType: activeContext.contentType || 'movie',
@@ -119,11 +124,13 @@ export function startTracking(videoElement, context, seekOffset = 0) {
     }
 
     // Periodic sync interval
+    const intervalMs = getSyncIntervalMs();
+    console.log(`[WATCH_TRACKER] Sync interval configured to ${intervalMs / 1000}s`);
     syncInterval = setInterval(() => {
         if (videoElementRef && !videoElementRef.paused) {
             sendProgressUpdate();
         }
-    }, SYNC_INTERVAL_MS);
+    }, intervalMs);
 }
 
 export function stopTracking() {

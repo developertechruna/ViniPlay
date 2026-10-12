@@ -816,6 +816,8 @@ function getSettings() {
         dvrLogLevel: 'warning',
         searchScope: 'all_channels_unfiltered',
         notificationLeadTime: 10,
+        vodMinWatchTimeSeconds: 5,
+        vodProgressSyncIntervalSeconds: 5,
         sourcesLastUpdated: null,
         logs: {
             maxFiles: 5,
@@ -951,6 +953,17 @@ function getSettings() {
                 settings.logs.autoDeleteDays = defaultSettings.logs.autoDeleteDays;
                 needsSave = true;
             }
+        }
+
+        if (settings.vodMinWatchTimeSeconds === undefined) {
+            console.log(`[SETTINGS_MIGRATE] Adding missing vodMinWatchTimeSeconds setting.`);
+            settings.vodMinWatchTimeSeconds = 5;
+            needsSave = true;
+        }
+        if (settings.vodProgressSyncIntervalSeconds === undefined) {
+            console.log(`[SETTINGS_MIGRATE] Adding missing vodProgressSyncIntervalSeconds setting.`);
+            settings.vodProgressSyncIntervalSeconds = 5;
+            needsSave = true;
         }
 
         // Check that all expected settings are present and set and if not,
@@ -2636,8 +2649,10 @@ app.post('/api/vod/progress', requireAuth, async (req, res) => {
         }
 
         const curTime = parseFloat(currentTime) || 0;
-        // Skip saving if watched less than 15 seconds
-        if (curTime < 15) {
+        const currentSettings = getSettings();
+        const minWatchSeconds = parseInt(currentSettings?.vodMinWatchTimeSeconds, 10) || 5;
+        // Skip saving if watched less than configured min watch time
+        if (curTime < minWatchSeconds) {
             return res.json({ success: true, ignored: true });
         }
 

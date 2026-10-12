@@ -2178,6 +2178,22 @@
                                     min="1" value="10">
                             </div>
                             <div class="border-t border-gray-700/50 pt-4">
+                                <label for="vod-min-watch-time-input"
+                                    class="block text-sm font-medium text-gray-400 mb-1">VOD Min Watch Time (seconds)</label>
+                                <p class="text-xs text-gray-500 mb-2">Minimum seconds a video must play before saving progress in Continue Watching.</p>
+                                <input type="number" id="vod-min-watch-time-input"
+                                    class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-blue-500 focus:border-blue-500"
+                                    min="1" max="120" value="5">
+                            </div>
+                            <div>
+                                <label for="vod-sync-interval-input"
+                                    class="block text-sm font-medium text-gray-400 mb-1">VOD Progress Sync Interval (seconds)</label>
+                                <p class="text-xs text-gray-500 mb-2">How often (in seconds) the player syncs watch progress with the server.</p>
+                                <input type="number" id="vod-sync-interval-input"
+                                    class="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-blue-500 focus:border-blue-500"
+                                    min="1" max="60" value="5">
+                            </div>
+                            <div class="border-t border-gray-700/50 pt-4">
                                 <label class="block text-sm font-medium text-gray-400 mb-1">Server Public IP
                                     Address</label>
                                 <p class="text-xs text-gray-500 mb-2">Server Public IP Address</p>
@@ -3002,7 +3018,7 @@
     </div>
 
 
-    <script type="module" src="/js/main.js?v=6"></script>
+    <script type="module" src="/js/main.js?v=7"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">
