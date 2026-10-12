@@ -374,13 +374,15 @@ if (sessionSecret.includes('replace_this')) {
     console.warn('[SECURITY] Using a weak or default SESSION_SECRET. Please replace it.');
 }
 
+app.set('trust proxy', 1);
+
 app.use(
     session({
         store: new SQLiteStore({ db: 'viniplay.db', dir: DATA_DIR, table: 'sessions' }),
         secret: sessionSecret,
         resave: false,
         saveUninitialized: false,
-        cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.NODE_ENV === 'production' },
+        cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true, secure: process.env.COOKIE_SECURE === 'true' },
     })
 );
 
@@ -3419,7 +3421,27 @@ app.get('/stream', allowLocalOrAuth, async (req, res) => {
         .replace(/{streamUrl}/g, streamUrl)
         .replace(/{userAgent}|{clientUserAgent}/g, userAgent.value);
 
-    const args = (commandTemplate.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map(arg => arg.replace(/^"|"$/g, ''));
+    let args = (commandTemplate.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map(arg => arg.replace(/^"|"$/g, ''));
+
+    // VOD Stream Optimization: Prevent buffer overflow, connection drops, and codec desync
+    const isVodStream = vodName || req.query.isVod === 'true' || streamUrl.includes('.mkv') || streamUrl.includes('.mp4') || streamUrl.includes('/series/') || streamUrl.includes('/movie/');
+    if (isVodStream) {
+        console.log(`[STREAM] Optimizing FFmpeg parameters for VOD stream playback.`);
+        const iIndex = args.indexOf('-i');
+        if (iIndex !== -1) {
+            if (!args.includes('-reconnect')) {
+                args.splice(iIndex, 0, '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
+            }
+            const updatedIIndex = args.indexOf('-i');
+            if (!args.includes('-re')) {
+                args.splice(updatedIIndex, 0, '-re');
+            }
+        }
+        const fIndex = args.indexOf('-f');
+        if (fIndex !== -1 && !args.includes('-sn')) {
+            args.splice(fIndex, 0, '-sn');
+        }
+    }
 
     console.log(`[STREAM] FFmpeg command args: ffmpeg ${args.join(' ')}`);
     const ffmpeg = spawn('ffmpeg', args);
@@ -4212,7 +4234,27 @@ async function startRecording(job) {
         .replace(/{userAgent}/g, userAgent.value)
         .replace(/{filePath}/g, fullFilePath);
 
-    const args = (commandTemplate.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map(arg => arg.replace(/^"|"$/g, ''));
+    let args = (commandTemplate.match(/(?:[^\s"]+|"[^"]*")+/g) || []).map(arg => arg.replace(/^"|"$/g, ''));
+
+    // VOD Stream Optimization: Prevent buffer overflow, connection drops, and codec desync
+    const isVodStream = vodName || req.query.isVod === 'true' || streamUrl.includes('.mkv') || streamUrl.includes('.mp4') || streamUrl.includes('/series/') || streamUrl.includes('/movie/');
+    if (isVodStream) {
+        console.log(`[STREAM] Optimizing FFmpeg parameters for VOD stream playback.`);
+        const iIndex = args.indexOf('-i');
+        if (iIndex !== -1) {
+            if (!args.includes('-reconnect')) {
+                args.splice(iIndex, 0, '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
+            }
+            const updatedIIndex = args.indexOf('-i');
+            if (!args.includes('-re')) {
+                args.splice(updatedIIndex, 0, '-re');
+            }
+        }
+        const fIndex = args.indexOf('-f');
+        if (fIndex !== -1 && !args.includes('-sn')) {
+            args.splice(fIndex, 0, '-sn');
+        }
+    }
 
     console.log(`[DVR] Spawning ffmpeg for job ${job.id} with command: ffmpeg ${args.join(' ')}`);
     const ffmpeg = spawn('ffmpeg', args);

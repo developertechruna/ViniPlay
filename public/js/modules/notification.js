@@ -437,7 +437,8 @@ export const navigateToProgramInGuide = async (channelId, programStart, programI
         const stableChannelIdSuffix = channelId.includes('_') ? '_' + channelId.split('_').pop() : channelId;
 
         // No need to navigate again if we are already on the guide page from the deep link
-        if (window.location.pathname !== '/tvguide' && window.location.pathname !== '/') {
+        const currentNavPath = window.location.pathname.replace(/^\/viniplay(\/|$)/, "/") || "/";
+        if (currentNavPath !== '/tvguide' && currentNavPath !== '/') {
             navigate('/tvguide');
             // Wait a moment for the page switch to happen visually.
             await new Promise(resolve => setTimeout(resolve, 50));

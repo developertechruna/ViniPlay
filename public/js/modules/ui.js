@@ -362,7 +362,8 @@ export const tempBlockConfigReload = () => {
 export const handleRouteChange = () => {
     const wasMultiView = currentPage.startsWith('/multiview');
     const wasPlayer = currentPage.startsWith('/player');
-    const path = window.location.pathname;
+    const rawPath = window.location.pathname;
+    const path = rawPath.replace(/^\/viniplay(\/|$)/, "/") || "/";
 
     if (wasMultiView && !path.startsWith('/multiview')) {
         if (isMultiViewActive()) {
@@ -374,7 +375,7 @@ export const handleRouteChange = () => {
                     proceedWithRouteChange(path);
                 }
             );
-            window.history.pushState({}, currentPage, window.location.origin + currentPage);
+            window.history.pushState({}, currentPage, window.location.origin + "/viniplay" + (currentPage === "/" ? "" : currentPage));
             return;
         } else {
             cleanupMultiView();
@@ -391,7 +392,7 @@ export const handleRouteChange = () => {
                     proceedWithRouteChange(path);
                 }
             );
-            window.history.pushState({}, currentPage, window.location.origin + currentPage);
+            window.history.pushState({}, currentPage, window.location.origin + "/viniplay" + (currentPage === "/" ? "" : currentPage));
             return;
         } else {
             cleanupDirectPlayer();
@@ -549,8 +550,10 @@ async function proceedWithRouteChange(path) {
  * @param {string} path - The new path to navigate to.
  */
 export const navigate = (path) => {
-    if (window.location.pathname !== path) {
-        window.history.pushState({}, path, window.location.origin + path);
+    const rawPath = window.location.pathname;
+    const current = rawPath.replace(/^\/viniplay(\/|$)/, "/") || "/";
+    if (current !== path) {
+        window.history.pushState({}, path, window.location.origin + "/viniplay" + (path === "/" ? "" : path));
     }
     handleRouteChange();
 };

@@ -113,7 +113,7 @@ function initializeSse() {
     eventSource.addEventListener('activity-update', (event) => {
         const data = JSON.parse(event.data);
         // This will only do something if the admin page is currently active.
-        if (window.location.pathname.startsWith('/activity')) {
+        if (window.location.pathname.includes('/activity')) {
             handleActivityUpdate(data.live);
         }
     });
@@ -462,11 +462,11 @@ function setupCoreEventListeners() {
         if (document.visibilityState === 'visible') {
             console.log('[MAIN] Tab is visible again, refreshing data for current page.');
             const currentPage = window.location.pathname;
-            if (currentPage.startsWith('/dvr')) {
+            if (currentPage.includes('/dvr')) {
                 initDvrPage();
-            } else if (currentPage.startsWith('/notifications')) {
+            } else if (currentPage.includes('/notifications')) {
                 loadAndScheduleNotifications();
-            } else if (currentPage.startsWith('/activity')) { // NEW
+            } else if (currentPage.includes('/activity')) { // NEW
                 initActivityPage();
             }
         }

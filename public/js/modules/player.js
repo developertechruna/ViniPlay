@@ -232,7 +232,7 @@ export const playChannel = (url, name, channelId) => {
         return showNotification("Stream profile not found.", true);
     }
 
-    const streamUrlToPlay = profile.command === 'redirect' ? url : `/stream?url=${encodeURIComponent(url)}&profileId=${profileId}&userAgentId=${userAgentId}`;
+    const streamUrlToPlay = profile.command === 'redirect' ? url : `/viniplay/stream?url=${encodeURIComponent(url)}&profileId=${profileId}&userAgentId=${userAgentId}`;
     const channel = guideState.channels.find(c => c.id === channelId);
     const logo = channel ? channel.logo : '';
 
@@ -400,7 +400,7 @@ export const playVOD = async (url, title, logo = '') => {
     const settings = guideState.settings;
     const profileId = settings.activeStreamProfileId;
     const userAgentId = settings.activeUserAgentId;
-    const profile = (settings.streamProfiles || []).find(p => p.id === profileId);
+    let profile = (settings.streamProfiles || []).find(p => p.id === profileId);
 
     if (!profileId || !userAgentId || !profile) {
         const errorMsg = "Active stream profile or user agent not set/found. Cannot play VOD via profile. Please check settings.";
@@ -412,11 +412,24 @@ export const playVOD = async (url, title, logo = '') => {
 
     logToPlayerConsole(`Using Profile: ${profile.name}, User Agent ID: ${userAgentId}`);
 
+    // Auto-fallback to FFmpeg transcoding for VOD container files (MKV, MP4, etc.)
+    // when 'redirect' profile is selected, as mpegts.js only supports MPEG-TS/FLV streams.
+    const isVodMedia = url.includes('.mkv') || url.includes('.mp4') || url.includes('.avi') || url.includes('/series/') || url.includes('/movie/');
+    if (profile.command === 'redirect' && isVodMedia) {
+        const ffmpegProfile = (settings.streamProfiles || []).find(p => p.id === 'ffmpeg-default');
+        if (ffmpegProfile) {
+            console.log(`[VOD_PLAYER] Auto-selected profile "${ffmpegProfile.name}" for VOD transcoding via FFmpeg.`);
+            profile = ffmpegProfile;
+        }
+    }
+
+    logToPlayerConsole(`Using Profile: ${profile.name}, User Agent ID: ${userAgentId}`);
+
     // 3. Construct the stream URL
     // VODs always go through the /stream endpoint now, unless the profile is 'redirect'
     const streamUrlToPlay = profile.command === 'redirect'
         ? url // If redirect, still use mpegts.js but with the direct URL
-        : `/stream?url=${encodeURIComponent(url)}&profileId=${profileId}&userAgentId=${userAgentId}&vodName=${encodeURIComponent(title)}&vodLogo=${encodeURIComponent(logo)}`;
+        : `/viniplay/stream?url=${encodeURIComponent(url)}&profileId=${profile.id}&userAgentId=${userAgentId}&vodName=${encodeURIComponent(title)}&vodLogo=${encodeURIComponent(logo)}&isVod=true`;
 
     console.log(`[VOD_PLAYER] Final mpegts.js stream URL: ${streamUrlToPlay}`);
     logToPlayerConsole(`Final stream URL: ${streamUrlToPlay}`);
@@ -424,7 +437,7 @@ export const playVOD = async (url, title, logo = '') => {
     // Store the *original* VOD URL for potential stop requests if using /stream
     if (profile.command !== 'redirect') {
         currentLocalStreamUrl = url;
-        currentProfileId = profileId; // Store the profile ID
+        currentProfileId = profile.id; // Store the profile ID
     }
 
     // --- Activity Logging for Redirect VODs (using mpegts.js) ---
@@ -445,10 +458,15 @@ export const playVOD = async (url, title, logo = '') => {
     if (mpegts.isSupported()) {
         const mpegtsConfig = {
             enableStashBuffer: true,
-            stashInitialSize: 4096,
-            liveBufferLatency: 2.0,
+            stashInitialSize: 8192,
+            liveSync: false,
+            liveBufferLatencyChasing: false,
+            autoCleanupSourceBuffer: true,
+            autoCleanupMaxBackwardDuration: 180,
+            autoCleanupMinBackwardDuration: 60,
+            lazyLoad: false,
         };
-        logToPlayerConsole(`mpegts.js config: enableStashBuffer=${mpegtsConfig.enableStashBuffer}, stashInitialSize=${mpegtsConfig.stashInitialSize}KB`);
+        logToPlayerConsole(`mpegts.js VOD config: enableStashBuffer=${mpegtsConfig.enableStashBuffer}, liveSync=false`);
 
         try {
             appState.player = mpegts.createPlayer({
@@ -460,8 +478,11 @@ export const playVOD = async (url, title, logo = '') => {
             // Setup error handling
             appState.player.on(mpegts.Events.ERROR, (errorType, errorDetail) => {
                 const errorMsg = `Player Error: ${errorType} - ${errorDetail}`;
-                console.error(`[VOD_PLAYER] MPEGTS Player Error: ${errorMsg}`);
+                console.warn(`[VOD_PLAYER] MPEGTS Player Error: ${errorMsg}`);
                 logToPlayerConsole(errorMsg, true);
+                if (errorType === 'MediaError' && appState.player) {
+                    return; // Ignore non-fatal MSE buffer adjustments in VOD
+                }
                 showNotification(errorMsg, true);
                 stopAndCleanupPlayer(); // Cleanup on error
             });
