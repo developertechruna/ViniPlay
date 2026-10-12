@@ -1260,7 +1260,15 @@
                 <h1 class="text-xl sm:text-2xl font-bold">VINI PLAY</h1>
             </div>
             <div class="flex items-center gap-4">
-                <span id="user-display" class="text-sm text-gray-400 hidden sm:block"></span>
+                <button id="user-display"
+                    class="hidden sm:inline-flex items-center gap-2 text-xs sm:text-sm font-semibold py-1 px-3 rounded-full bg-gray-700/80 hover:bg-gray-700 text-gray-200 border border-gray-600 hover:border-blue-400 transition-all cursor-pointer shadow-sm group"
+                    title="Mi Dashboard de Contenido">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="user-display-name" class="group-hover:text-blue-300 transition-colors"></span>
+                    <svg class="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
                 <div class="hidden lg:flex gap-2">
                     <button id="tab-guide"
                         class="tab-button text-sm sm:text-base font-medium py-2 px-4 text-gray-300 hover:bg-gray-700 active rounded-md transition-colors">TV
@@ -1638,6 +1646,70 @@
                 <div id="vod-pagination-controls" class="flex-shrink-0 bg-gray-800 border-t border-gray-700">
                 </div>
             </div>
+
+            <!-- Dashboard Page: Continuar Viendo y Resumen de Series -->
+            <div id="page-dashboard" class="hidden flex-grow flex-col items-center p-4 sm:p-6 overflow-y-auto custom-scrollbar">
+                <div class="w-full max-w-7xl mx-auto space-y-8 pb-16">
+                    <!-- Dashboard Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-700 pb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="p-2.5 bg-blue-600/20 text-blue-400 rounded-xl border border-blue-500/30">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </span>
+                            <div>
+                                <h2 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2">
+                                    Dashboard de <span id="dashboard-user-badge" class="text-blue-400">Usuario</span>
+                                </h2>
+                                <p class="text-sm text-gray-400 mt-0.5">Continúa viendo donde lo dejaste y revisa el resumen de tus series</p>
+                            </div>
+                        </div>
+                        <button id="dashboard-refresh-btn" class="self-start sm:self-auto bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-200 text-sm font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 cursor-pointer shadow">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            Actualizar
+                        </button>
+                    </div>
+
+                    <!-- Section 1: Continuar Viendo -->
+                    <section class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse"></span>
+                                Continuar Viendo
+                            </h3>
+                        </div>
+                        <div id="dashboard-continue-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                            <!-- Injected dynamically -->
+                        </div>
+                        <div id="dashboard-continue-empty" class="hidden py-12 text-center bg-gray-800/40 border border-gray-700/60 rounded-xl">
+                            <div class="text-gray-400 text-base font-medium">No tienes contenido en curso</div>
+                            <p class="text-xs text-gray-500 mt-1">Cuando comiences a ver películas o episodios en VOD, aparecerán aquí para retomarlos.</p>
+                        </div>
+                    </section>
+
+                    <!-- Section 2: Series en Curso -->
+                    <section class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 bg-purple-500 rounded-full"></span>
+                                Series en Curso
+                            </h3>
+                        </div>
+                        <div id="dashboard-series-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Injected dynamically -->
+                        </div>
+                        <div id="dashboard-series-empty" class="hidden py-12 text-center bg-gray-800/40 border border-gray-700/60 rounded-xl">
+                            <div class="text-gray-400 text-base font-medium">No has iniciado ninguna serie</div>
+                            <p class="text-xs text-gray-500 mt-1">Tu progreso de episodios y temporadas vistas se resumirá aquí.</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
 
             <!-- Admin Activity Page -->
             <div id="page-activity" class="hidden flex-grow flex-col items-start p-4 overflow-y-auto custom-scrollbar">
@@ -2283,6 +2355,10 @@
             <button id="mobile-nav-dvr"
                 class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
                 <span class="flex items-center gap-2"><span data-icon="dvr"></span> DVR</span>
+            </button>
+            <button id="mobile-nav-dashboard"
+                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
+                <span class="flex items-center gap-2"><span data-icon="dashboard"></span> Mi Dashboard</span>
             </button>
             <button id="mobile-nav-vod"
                 class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
@@ -2952,7 +3028,7 @@
     </div>
 
 
-    <script type="module" src="/js/main.js?v=3"></script>
+    <script type="module" src="/js/main.js?v=4"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">

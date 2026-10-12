@@ -7,6 +7,7 @@ import { appState, guideState, UIElements } from './state.js';
 // MODIFIED: Added stopStream to the import
 import { saveUserSetting, stopStream, startRedirectStream, stopRedirectStream } from './api.js';
 import { withBase } from './basePath.js';
+import { startTracking, stopTracking } from './watchTracker.js';
 import { showNotification, openModal, closeModal } from './ui.js';
 import { castState, loadMedia, setLocalPlayerState } from './cast.js';
 import { logToPlayerConsole } from './player_direct.js';
@@ -93,6 +94,7 @@ export async function forceRefreshStream() {
  * This does NOT affect an active Google Cast session.
  */
 export const stopAndCleanupPlayer = async () => { // MODIFIED: Made function async
+    stopTracking();
     // If we were logging a redirect stream, tell the server it has stopped.
     if (currentRedirectHistoryId) {
         stopRedirectStream(currentRedirectHistoryId);
@@ -344,7 +346,8 @@ export const playChannel = (url, name, channelId) => {
  * @param {string} url - The direct URL to the VOD file (e.g., .mp4, .mkv).
  * @param {string} title - The title of the VOD to display.
  */
-export const playVOD = async (url, title, logo = '') => {
+export const playVOD = async (url, title, logo = '', startTime = 0, vodContext = null) => {
+    const seekOffset = parseFloat(startTime) || 0;
     const useDirectPlay = guideState.settings.vodDirectPlayEnabled === true;
     console.log(`[VOD_PLAYER] Attempting to play VOD: "${title}" | Direct Play: ${useDirectPlay}`);
 
@@ -367,7 +370,19 @@ export const playVOD = async (url, title, logo = '') => {
         try {
             // Ensure volume is set
             UIElements.videoElement.volume = parseFloat(localStorage.getItem('iptvPlayerVolume') || 0.5);
+            if (seekOffset > 0) {
+                UIElements.videoElement.currentTime = seekOffset;
+            }
             await UIElements.videoElement.play();
+            const trackContext = vodContext || {
+                contentType: url.includes('/series/') ? 'series' : 'movie',
+                contentId: url,
+                title: title,
+                logo: logo,
+                streamUrl: url,
+                duration: 0
+            };
+            startTracking(UIElements.videoElement, trackContext, seekOffset);
             console.log(`[VOD_PLAYER] Native playback started for: "${title}"`);
             // Clear live stream tracking state
             setLocalPlayerState(null, null, null);
@@ -430,7 +445,7 @@ export const playVOD = async (url, title, logo = '') => {
     // VODs always go through the /stream endpoint now, unless the profile is 'redirect'
     const streamUrlToPlay = profile.command === 'redirect'
         ? url // If redirect, still use mpegts.js but with the direct URL
-        : withBase(`/stream?url=${encodeURIComponent(url)}&profileId=${profile.id}&userAgentId=${userAgentId}&vodName=${encodeURIComponent(title)}&vodLogo=${encodeURIComponent(logo)}&isVod=true`);
+        : withBase(`/stream?url=${encodeURIComponent(url)}&profileId=${profile.id}&userAgentId=${userAgentId}&vodName=${encodeURIComponent(title)}&vodLogo=${encodeURIComponent(logo)}&isVod=true${seekOffset > 0 ? `&startTime=${Math.floor(seekOffset)}` : ''}`);
 
     console.log(`[VOD_PLAYER] Final mpegts.js stream URL: ${streamUrlToPlay}`);
     logToPlayerConsole(`Final stream URL: ${streamUrlToPlay}`);
@@ -509,6 +524,15 @@ export const playVOD = async (url, title, logo = '') => {
             await appState.player.play();
             console.log(`[VOD_PLAYER] Playback command issued for: "${title}"`);
             setLocalPlayerState(streamUrlToPlay, title, null); // Update cast state
+            const mpegtsTrackContext = vodContext || {
+                contentType: url.includes('/series/') ? 'series' : 'movie',
+                contentId: url,
+                title: title,
+                logo: logo,
+                streamUrl: url,
+                duration: 0
+            };
+            startTracking(UIElements.videoElement, mpegtsTrackContext, seekOffset);
 
             // Start stream info interval if needed
             if (streamInfoInterval) clearInterval(streamInfoInterval);

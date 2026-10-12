@@ -227,6 +227,34 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
                     db.run("ALTER TABLE provider_episode_relations ADD COLUMN container_extension TEXT", () => { });
                 }
             });
+            // --- NEW: VOD Watch Progress Table (Dashboard & Resume Support) ---
+            db.run(`CREATE TABLE IF NOT EXISTS vod_watch_progress (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                content_type TEXT NOT NULL,
+                content_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                series_name TEXT,
+                season_num INTEGER,
+                episode_num INTEGER,
+                episode_id TEXT,
+                episode_title TEXT,
+                logo TEXT,
+                stream_url TEXT NOT NULL,
+                current_time REAL NOT NULL DEFAULT 0,
+                duration REAL DEFAULT 0,
+                percentage REAL DEFAULT 0,
+                is_completed INTEGER DEFAULT 0,
+                last_watched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE (user_id, content_id, episode_id)
+            )`, (err) => {
+                if (err) {
+                    console.error("[DB] Error creating 'vod_watch_progress' table:", err.message);
+                } else {
+                    db.run(`CREATE INDEX IF NOT EXISTS idx_vod_progress_user_recent ON vod_watch_progress(user_id, is_completed, last_watched_at DESC)`);
+                }
+            });
             // --- END NEW VOD TABLES ---
 
             //-- ENHANCEMENT: Modify stream history table to include more data for the admin panel.
@@ -2593,6 +2621,192 @@ app.get('/api/vod/categories', requireAuth, async (req, res) => {
     }
 });
 
+// --- NEW: VOD Watch Progress & Dashboard Endpoints ---
+app.post('/api/vod/progress', requireAuth, async (req, res) => {
+    try {
+        const {
+            contentType, contentId, title, seriesName,
+            seasonNum, episodeNum, episodeId, episodeTitle,
+            logo, streamUrl, currentTime, duration
+        } = req.body;
+        const userId = req.session.userId;
+
+        if (!contentId || currentTime === undefined) {
+            return res.status(400).json({ error: 'Missing contentId or currentTime.' });
+        }
+
+        const curTime = parseFloat(currentTime) || 0;
+        // Skip saving if watched less than 15 seconds
+        if (curTime < 15) {
+            return res.json({ success: true, ignored: true });
+        }
+
+        const dur = parseFloat(duration) || 0;
+        const pct = dur > 0 ? Math.min(100, (curTime / dur) * 100) : 0;
+        const isCompleted = pct >= 92 ? 1 : 0;
+        const epId = episodeId ? String(episodeId) : '';
+
+        const query = `
+            INSERT INTO vod_watch_progress (
+                user_id, content_type, content_id, title, series_name,
+                season_num, episode_num, episode_id, episode_title,
+                logo, stream_url, current_time, duration, percentage,
+                is_completed, last_watched_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id, content_id, episode_id) DO UPDATE SET
+                title = excluded.title,
+                series_name = excluded.series_name,
+                season_num = excluded.season_num,
+                episode_num = excluded.episode_num,
+                episode_title = excluded.episode_title,
+                logo = excluded.logo,
+                stream_url = excluded.stream_url,
+                current_time = excluded.current_time,
+                duration = CASE WHEN excluded.duration > 0 THEN excluded.duration ELSE vod_watch_progress.duration END,
+                percentage = excluded.percentage,
+                is_completed = excluded.is_completed,
+                last_watched_at = CURRENT_TIMESTAMP;
+        `;
+
+        await dbRun(db, query, [
+            userId,
+            contentType || 'movie',
+            String(contentId),
+            title || 'Untitled',
+            seriesName || null,
+            seasonNum ? parseInt(seasonNum, 10) : null,
+            episodeNum ? parseInt(episodeNum, 10) : null,
+            epId,
+            episodeTitle || null,
+            logo || null,
+            streamUrl || '',
+            curTime,
+            dur,
+            pct,
+            isCompleted
+        ]);
+
+        res.json({ success: true, isCompleted, currentTime: curTime, percentage: pct });
+    } catch (error) {
+        console.error('[API_VOD] Error saving watch progress:', error);
+        res.status(500).json({ error: 'Failed to save watch progress.' });
+    }
+});
+
+app.get('/api/vod/continue-watching', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const query = `
+            SELECT * FROM vod_watch_progress
+            WHERE user_id = ? AND is_completed = 0
+            ORDER BY last_watched_at DESC
+            LIMIT 24
+        `;
+        const rows = await dbAll(db, query, [userId]);
+
+        const seenSeries = new Set();
+        const continueItems = [];
+
+        for (const row of rows) {
+            if (row.content_type === 'series') {
+                if (seenSeries.has(row.content_id)) continue;
+                seenSeries.add(row.content_id);
+            }
+            const remainingSeconds = Math.max(0, (row.duration || 0) - row.current_time);
+            const remainingMinutes = Math.round(remainingSeconds / 60);
+
+            continueItems.push({
+                id: row.id,
+                contentType: row.content_type,
+                contentId: row.content_id,
+                title: row.title,
+                seriesName: row.series_name,
+                seasonNum: row.season_num,
+                episodeNum: row.episode_num,
+                episodeId: row.episode_id,
+                episodeTitle: row.episode_title,
+                logo: row.logo,
+                streamUrl: row.stream_url,
+                currentTime: row.current_time,
+                duration: row.duration,
+                percentage: row.percentage,
+                remainingMinutes: remainingMinutes > 0 ? remainingMinutes : null,
+                lastWatchedAt: row.last_watched_at
+            });
+        }
+
+        res.json({ success: true, items: continueItems });
+    } catch (error) {
+        console.error('[API_VOD] Error fetching continue watching items:', error);
+        res.status(500).json({ error: 'Failed to fetch continue watching items.' });
+    }
+});
+
+app.get('/api/vod/series-summary', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const startedSeries = await dbAll(db, `
+            SELECT DISTINCT content_id, series_name, title, logo, MAX(last_watched_at) as last_activity
+            FROM vod_watch_progress
+            WHERE user_id = ? AND content_type = 'series'
+            GROUP BY content_id
+            ORDER BY last_activity DESC
+            LIMIT 20
+        `, [userId]);
+
+        const summary = [];
+
+        for (const s of startedSeries) {
+            const userEpisodes = await dbAll(db, `
+                SELECT episode_id, season_num, episode_num, episode_title, stream_url, current_time, duration, percentage, is_completed, last_watched_at
+                FROM vod_watch_progress
+                WHERE user_id = ? AND content_id = ?
+                ORDER BY season_num ASC, episode_num ASC
+            `, [userId, s.content_id]);
+
+            const completedCount = userEpisodes.filter(e => e.is_completed === 1).length;
+            const inProgressEp = userEpisodes.find(e => e.is_completed === 0);
+            const lastWatchedEp = userEpisodes[userEpisodes.length - 1];
+
+            const seriesInfo = await dbGet(db, `SELECT id FROM series WHERE provider_unique_id = ?`, [s.content_id]);
+            let totalEpisodes = userEpisodes.length;
+            if (seriesInfo) {
+                const totalCountRow = await dbGet(db, `SELECT COUNT(*) as count FROM episodes WHERE series_id = ?`, [seriesInfo.id]);
+                if (totalCountRow && totalCountRow.count > 0) totalEpisodes = totalCountRow.count;
+            }
+
+            summary.push({
+                contentId: s.content_id,
+                title: s.series_name || s.title,
+                logo: s.logo,
+                totalEpisodes,
+                completedEpisodes: completedCount,
+                percentCompleted: totalEpisodes > 0 ? Math.round((completedCount / totalEpisodes) * 100) : 0,
+                inProgressEpisode: inProgressEp || null,
+                lastWatchedEpisode: lastWatchedEp || null,
+                lastActivity: s.last_activity
+            });
+        }
+
+        res.json({ success: true, series: summary });
+    } catch (error) {
+        console.error('[API_VOD] Error fetching series summary:', error);
+        res.status(500).json({ error: 'Failed to fetch series summary.' });
+    }
+});
+
+app.delete('/api/vod/progress/:contentId', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const contentId = req.params.contentId;
+        await dbRun(db, `DELETE FROM vod_watch_progress WHERE user_id = ? AND content_id = ?`, [userId, contentId]);
+        res.json({ success: true, message: 'Removed from watch progress.' });
+    } catch (error) {
+        console.error('[API_VOD] Error deleting watch progress:', error);
+        res.status(500).json({ error: 'Failed to delete watch progress.' });
+    }
+});
+
 const upload = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => {
@@ -3397,13 +3611,14 @@ function allowLocalOrAuth(req, res, next) {
 
 // MODIFIED: Stream endpoint now allows local network access for Chromecast
 app.get('/stream', allowLocalOrAuth, async (req, res) => {
-    const { url: streamUrl, profileId, userAgentId, vodName, vodLogo } = req.query;
+    const { url: streamUrl, profileId, userAgentId, vodName, vodLogo, startTime: reqStartTime } = req.query;
     const userId = req.session.userId;
     const username = req.session.username;
     const clientIp = req.clientIp;
 
-    // Include profileId in stream key so Cast (MP4) and browser (MPEG-TS) don't share the same process
-    const streamKey = `${userId}::${streamUrl}::${profileId}`;
+    const seekOffsetSeconds = parseFloat(reqStartTime) || 0;
+    // Include profileId and seek offset in stream key so seeking doesn't share an old stream process
+    const streamKey = `${userId}::${streamUrl}::${profileId}::${Math.floor(seekOffsetSeconds)}`;
 
     const activeStreamInfo = activeStreamProcesses.get(streamKey);
 
@@ -3489,12 +3704,18 @@ app.get('/stream', allowLocalOrAuth, async (req, res) => {
         console.log(`[STREAM] Optimizing FFmpeg parameters for VOD stream playback.`);
         const iIndex = args.indexOf('-i');
         if (iIndex !== -1) {
-            if (!args.includes('-reconnect')) {
-                args.splice(iIndex, 0, '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
+            // Fast seek if startTime offset is requested
+            if (seekOffsetSeconds > 0) {
+                console.log(`[STREAM] Fast-seeking VOD stream to offset: ${seekOffsetSeconds} seconds.`);
+                args.splice(iIndex, 0, '-ss', String(seekOffsetSeconds));
             }
             const updatedIIndex = args.indexOf('-i');
+            if (!args.includes('-reconnect')) {
+                args.splice(updatedIIndex, 0, '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
+            }
+            const secondUpdatedIIndex = args.indexOf('-i');
             if (!args.includes('-re')) {
-                args.splice(updatedIIndex, 0, '-re');
+                args.splice(secondUpdatedIIndex, 0, '-re');
             }
         }
         const fIndex = args.indexOf('-f');
@@ -4302,12 +4523,18 @@ async function startRecording(job) {
         console.log(`[STREAM] Optimizing FFmpeg parameters for VOD stream playback.`);
         const iIndex = args.indexOf('-i');
         if (iIndex !== -1) {
-            if (!args.includes('-reconnect')) {
-                args.splice(iIndex, 0, '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
+            // Fast seek if startTime offset is requested
+            if (seekOffsetSeconds > 0) {
+                console.log(`[STREAM] Fast-seeking VOD stream to offset: ${seekOffsetSeconds} seconds.`);
+                args.splice(iIndex, 0, '-ss', String(seekOffsetSeconds));
             }
             const updatedIIndex = args.indexOf('-i');
+            if (!args.includes('-reconnect')) {
+                args.splice(updatedIIndex, 0, '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5');
+            }
+            const secondUpdatedIIndex = args.indexOf('-i');
             if (!args.includes('-re')) {
-                args.splice(updatedIIndex, 0, '-re');
+                args.splice(secondUpdatedIIndex, 0, '-re');
             }
         }
         const fIndex = args.indexOf('-f');

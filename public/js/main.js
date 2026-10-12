@@ -445,6 +445,12 @@ function setupCoreEventListeners() {
     UIElements.mobileNavPlayer?.addEventListener('click', () => switchTab('player'));
     UIElements.mobileNavDvr?.addEventListener('click', () => switchTab('dvr'));
     UIElements.mobileNavVod?.addEventListener('click', () => switchTab('vod'));
+    UIElements.userDisplay?.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchTab('dashboard');
+    });
+    UIElements.mobileNavDashboard?.addEventListener('click', () => switchTab('dashboard'));
+
     UIElements.mobileNavActivity?.addEventListener('click', () => switchTab('activity')); // NEW
     UIElements.mobileNavNotifications?.addEventListener('click', () => switchTab('notifications'));
     UIElements.mobileNavSettings?.addEventListener('click', () => switchTab('settings'));

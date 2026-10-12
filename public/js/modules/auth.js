@@ -292,7 +292,12 @@ const showApp = (user) => {
     // This will now be handled exclusively by proceedWithRouteChange in ui.js,
     // which acts as the single source of truth for UI state based on routes and permissions.
     // This prevents race conditions during app initialization.
-    UIElements.userDisplay.textContent = user.username;
+    const userDisplayName = document.getElementById('user-display-name');
+    if (userDisplayName) {
+        userDisplayName.textContent = user.username;
+    } else if (UIElements.userDisplay) {
+        UIElements.userDisplay.textContent = user.username;
+    }
     UIElements.userDisplay.classList.remove('hidden');
 
     console.log(`[AUTH_UI] User display set to: ${user.username}.`);

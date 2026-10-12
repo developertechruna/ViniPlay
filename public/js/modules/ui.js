@@ -1,3 +1,4 @@
+import { initDashboardPage } from './dashboard.js';
 /**
  * ui.js
  * * Contains functions for managing the user interface.
@@ -413,6 +414,7 @@ async function proceedWithRouteChange(path) {
     const isPlayer = path.startsWith('/player');
     const isDvr = path.startsWith('/dvr');
     const isVod = path.startsWith('/vod');
+    const isDashboard = path.startsWith('/dashboard');
     const isActivity = path.startsWith('/activity');
     const isNotifications = path.startsWith('/notifications');
     const isSettings = path.startsWith('/settings');
@@ -438,6 +440,16 @@ async function proceedWithRouteChange(path) {
     // VOD tab is visible to all
     if (UIElements.tabVod) UIElements.tabVod.classList.toggle('active', isVod);
     if (UIElements.mobileNavVod) UIElements.mobileNavVod.classList.toggle('active', isVod);
+    // Dashboard active state
+    if (UIElements.userDisplay) {
+        UIElements.userDisplay.classList.toggle('ring-2', isDashboard);
+        UIElements.userDisplay.classList.toggle('ring-blue-500', isDashboard);
+        UIElements.userDisplay.classList.toggle('bg-blue-900/50', isDashboard);
+    }
+    if (UIElements.mobileNavDashboard) {
+        UIElements.mobileNavDashboard.classList.toggle('active', isDashboard);
+    }
+
     // --- END ADD ---
 
     // Activity tab is for admins only
@@ -480,6 +492,12 @@ async function proceedWithRouteChange(path) {
     // Show VOD page to everyone
     UIElements.pageVod.classList.toggle('hidden', !isVod);
     UIElements.pageVod.classList.toggle('flex', isVod);
+    // Show Dashboard page
+    if (UIElements.pageDashboard) {
+        UIElements.pageDashboard.classList.toggle('hidden', !isDashboard);
+        UIElements.pageDashboard.classList.toggle('flex', isDashboard);
+    }
+
     // --- END ADD ---
 
     UIElements.pageActivity.classList.toggle('hidden', !isActivity || !isAdmin);
@@ -537,6 +555,8 @@ async function proceedWithRouteChange(path) {
             await initDvrPage();
         } else if (isVod) {
             await initVodPage();
+        } else if (isDashboard) {
+            await initDashboardPage();
         } else if (isActivity && isAdmin) {
             await initActivityPage();
         }
@@ -568,6 +588,7 @@ export const switchTab = (activeTab) => {
     else if (activeTab === 'player') newPath = '/player';
     else if (activeTab === 'dvr') newPath = '/dvr';
     else if (activeTab === 'vod') newPath = '/vod';
+    else if (activeTab === 'dashboard') newPath = '/dashboard';
     else if (activeTab === 'activity') newPath = '/activity';
     else if (activeTab === 'notifications') newPath = '/notifications';
     else newPath = '/settings';

@@ -218,10 +218,18 @@ async function openVodDetails(item) { // Make the function async
         UIElements.vodDetailsMovieActions.classList.remove('hidden');
         const movieUrl = item.url;
         const movieName = item.name;
-        const movieLogo = item.logo; // Get the logo
+        const movieLogo = item.logo;
+        const movieContext = {
+            contentType: 'movie',
+            contentId: item.id,
+            title: item.name,
+            logo: item.logo,
+            streamUrl: item.url,
+            duration: 0
+        };
         UIElements.vodPlayMovieBtn.onclick = null;
         UIElements.vodPlayMovieBtn.onclick = () => {
-            playVOD(movieUrl, movieName, movieLogo); // Pass the logo
+            playVOD(movieUrl, movieName, movieLogo, 0, movieContext);
             closeModal(UIElements.vodDetailsModal);
         };
 
@@ -234,8 +242,10 @@ async function openVodDetails(item) { // Make the function async
         const fullSeriesData = await fetchSeriesDetails(item.id);
         console.log(`[VOD] Fetched full series data for ID ${item.id}:`, fullSeriesData);
 
-        // Store the logo on the episode list element to be accessed by the click listener
+        // Store series metadata on the episode list element to be accessed by the click listener
         UIElements.vodEpisodeList.dataset.seriesLogo = fullSeriesData.logo || item.logo || '';
+        UIElements.vodEpisodeList.dataset.seriesId = fullSeriesData.id || item.id || '';
+        UIElements.vodEpisodeList.dataset.seriesName = fullSeriesData.name || item.name || '';
 
         // --- FIX: Robust check for invalid or empty series data ---
         if (!fullSeriesData || !fullSeriesData.seasons || Object.keys(fullSeriesData.seasons).length === 0) {
@@ -300,7 +310,7 @@ function renderEpisodeList(series, seasonNum) {
         const originalTitle = ep.name || `Episode ${index + 1}`;
 
         return `
-            <div class="episode-item" data-url="${ep.url}" data-title="${originalTitle.replace(/"/g, '&quot;')}">
+            <div class="episode-item" data-url="${ep.url}" data-title="${originalTitle.replace(/"/g, '&quot;')}" data-season-num="${seasonNum}" data-episode-num="${ep.episode || index + 1}" data-id="${ep.id || ''}" data-episode-title="${epName.replace(/"/g, '&quot;')}">
                 <div class="episode-item-epnum">${index + 1}</div>
                 <div class="episode-item-title">${epName}</div>
                 <div class="episode-item-duration">N/A</div>
@@ -401,8 +411,21 @@ function setupVodEventListeners() {
         if (episodeItem) {
             const url = episodeItem.dataset.url;
             const title = episodeItem.dataset.title;
-            const seriesLogo = UIElements.vodEpisodeList.dataset.seriesLogo || ''; // Get logo from parent
-            playVOD(url, title, seriesLogo); // Pass logo
+            const seriesLogo = UIElements.vodEpisodeList.dataset.seriesLogo || '';
+            const epContext = {
+                contentType: 'series',
+                contentId: UIElements.vodEpisodeList.dataset.seriesId || '',
+                title: UIElements.vodEpisodeList.dataset.seriesName || title,
+                seriesName: UIElements.vodEpisodeList.dataset.seriesName || '',
+                seasonNum: parseInt(episodeItem.dataset.seasonNum, 10) || 1,
+                episodeNum: parseInt(episodeItem.dataset.episodeNum, 10) || 1,
+                episodeId: episodeItem.dataset.id || '',
+                episodeTitle: episodeItem.dataset.episodeTitle || title,
+                logo: seriesLogo,
+                streamUrl: url,
+                duration: 0
+            };
+            playVOD(url, title, seriesLogo, 0, epContext);
             closeModal(UIElements.vodDetailsModal);
         }
     });
