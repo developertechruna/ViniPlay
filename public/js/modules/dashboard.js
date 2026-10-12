@@ -31,6 +31,7 @@ export async function initDashboardPage() {
     if (refreshBtn && !refreshBtn.dataset.hasListener) {
         refreshBtn.dataset.hasListener = 'true';
         refreshBtn.addEventListener('click', () => {
+            console.log('[DASHBOARD] Manual refresh triggered');
             loadContinueWatching();
             loadSeriesSummary();
         });
@@ -58,22 +59,37 @@ async function loadContinueWatching() {
 
     grid.innerHTML = '<div class="col-span-full py-8 text-center text-gray-400">Cargando contenido en curso...</div>';
 
-    const res = await apiFetch('/api/vod/continue-watching');
-    const items = res?.items || [];
+    try {
+        const res = await apiFetch('/api/vod/continue-watching');
+        if (!res || !res.ok) {
+            console.warn('[DASHBOARD] Failed to fetch continue-watching:', res?.status);
+            grid.innerHTML = '';
+            emptyMsg?.classList.remove('hidden');
+            return;
+        }
 
-    if (items.length === 0) {
+        const data = await res.json();
+        console.log('[DASHBOARD] Continue-watching data received:', data);
+        const items = data?.items || [];
+
+        if (items.length === 0) {
+            grid.innerHTML = '';
+            emptyMsg?.classList.remove('hidden');
+            return;
+        }
+
+        emptyMsg?.classList.add('hidden');
+        grid.innerHTML = '';
+
+        items.forEach(item => {
+            const card = createContinueCard(item);
+            grid.appendChild(card);
+        });
+    } catch (err) {
+        console.error('[DASHBOARD] Error parsing continue-watching:', err);
         grid.innerHTML = '';
         emptyMsg?.classList.remove('hidden');
-        return;
     }
-
-    emptyMsg?.classList.add('hidden');
-    grid.innerHTML = '';
-
-    items.forEach(item => {
-        const card = createContinueCard(item);
-        grid.appendChild(card);
-    });
 }
 
 /**
@@ -168,7 +184,7 @@ function createContinueCard(item) {
     dismissBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
-            await apiFetch(`/api/vod/progress/${item.contentId}`, { method: 'DELETE' });
+            await apiFetch(`/api/vod/progress/${encodeURIComponent(item.contentId)}`, { method: 'DELETE' });
             showNotification('Eliminado de continuar viendo', false, 2000);
             card.remove();
             const grid = document.getElementById('dashboard-continue-grid');
@@ -193,22 +209,37 @@ async function loadSeriesSummary() {
 
     grid.innerHTML = '<div class="col-span-full py-6 text-center text-gray-400">Cargando series en curso...</div>';
 
-    const res = await apiFetch('/api/vod/series-summary');
-    const seriesList = res?.series || [];
+    try {
+        const res = await apiFetch('/api/vod/series-summary');
+        if (!res || !res.ok) {
+            console.warn('[DASHBOARD] Failed to fetch series-summary:', res?.status);
+            grid.innerHTML = '';
+            emptyMsg?.classList.remove('hidden');
+            return;
+        }
 
-    if (seriesList.length === 0) {
+        const data = await res.json();
+        console.log('[DASHBOARD] Series-summary data received:', data);
+        const seriesList = data?.series || [];
+
+        if (seriesList.length === 0) {
+            grid.innerHTML = '';
+            emptyMsg?.classList.remove('hidden');
+            return;
+        }
+
+        emptyMsg?.classList.add('hidden');
+        grid.innerHTML = '';
+
+        seriesList.forEach(s => {
+            const card = createSeriesSummaryCard(s);
+            grid.appendChild(card);
+        });
+    } catch (err) {
+        console.error('[DASHBOARD] Error parsing series-summary:', err);
         grid.innerHTML = '';
         emptyMsg?.classList.remove('hidden');
-        return;
     }
-
-    emptyMsg?.classList.add('hidden');
-    grid.innerHTML = '';
-
-    seriesList.forEach(s => {
-        const card = createSeriesSummaryCard(s);
-        grid.appendChild(card);
-    });
 }
 
 /**
