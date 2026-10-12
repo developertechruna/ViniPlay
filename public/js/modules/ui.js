@@ -440,15 +440,9 @@ async function proceedWithRouteChange(path) {
     // VOD tab is visible to all
     if (UIElements.tabVod) UIElements.tabVod.classList.toggle('active', isVod);
     if (UIElements.mobileNavVod) UIElements.mobileNavVod.classList.toggle('active', isVod);
-    // Dashboard active state
-    if (UIElements.userDisplay) {
-        UIElements.userDisplay.classList.toggle('ring-2', isDashboard);
-        UIElements.userDisplay.classList.toggle('ring-blue-500', isDashboard);
-        UIElements.userDisplay.classList.toggle('bg-blue-900/50', isDashboard);
-    }
-    if (UIElements.mobileNavDashboard) {
-        UIElements.mobileNavDashboard.classList.toggle('active', isDashboard);
-    }
+    // Dashboard active state (uses native .tab-button.active)
+    UIElements.userDisplay?.classList.toggle('active', isDashboard);
+    UIElements.mobileNavDashboard?.classList.toggle('active', isDashboard);
 
     // --- END ADD ---
 
