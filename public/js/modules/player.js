@@ -4,10 +4,9 @@
  */
 
 import { appState, guideState, UIElements } from './state.js';
-// MODIFIED: Added stopStream to the import
-import { saveUserSetting, stopStream, startRedirectStream, stopRedirectStream } from './api.js';
+import { saveUserSetting, stopStream, startRedirectStream, stopRedirectStream, apiFetch } from './api.js';
 import { withBase } from './basePath.js';
-import { startTracking, stopTracking } from './watchTracker.js';
+import { startTracking, stopTracking, updateTrackingDuration } from './watchTracker.js';
 import { showNotification, openModal, closeModal } from './ui.js';
 import { castState, loadMedia, setLocalPlayerState } from './cast.js';
 import { logToPlayerConsole } from './player_direct.js';
@@ -24,6 +23,12 @@ let currentChannelInfo = null; // Stores { url, name, channelId } for retries
 let retryCount = 0;
 const MAX_RETRIES = 3;
 let retryTimeout = null;
+
+// --- NEW: YouTube-Style Duration and Playback Time State ---
+let currentPlaybackDuration = 0; // Total duration in seconds (0 = unknown/live)
+let isLivePlayback = false; // true if channel / live stream
+let activeSeekOffset = 0; // Offset if started with startTime
+let hideBadgeTimeout = null;
 
 /**
  * Handles a catastrophic stream error by attempting to restart the stream.
@@ -140,6 +145,20 @@ export const stopAndCleanupPlayer = async () => { // MODIFIED: Made function asy
     UIElements.videoElement.load();
 
     setLocalPlayerState(null, null, null);
+
+    // Reset YouTube-style duration & time state
+    currentPlaybackDuration = 0;
+    activeSeekOffset = 0;
+    isLivePlayback = false;
+    clearTimeout(hideBadgeTimeout);
+    if (UIElements.playerTimeBadge) {
+        UIElements.playerTimeBadge.classList.add('hidden');
+        UIElements.playerTimeBadge.style.opacity = '1';
+    }
+    if (UIElements.playerHeaderTime) {
+        UIElements.playerHeaderTime.classList.add('hidden');
+        UIElements.playerHeaderTime.textContent = '';
+    }
 
     // If we're casting, just close the modal and keep the cast session active
     if (castState.isCasting) {
@@ -306,23 +325,17 @@ export const playChannel = (url, name, channelId) => {
 
         openModal(UIElements.videoModal);
         UIElements.videoTitle.textContent = name;
+        isLivePlayback = true;
+        currentPlaybackDuration = 0;
+        activeSeekOffset = 0;
+        updateYouTubeTimeDisplay();
+
         appState.player.attachMediaElement(UIElements.videoElement);
         appState.player.load();
 
-        // NEW: Enforce aspect ratio when metadata is loaded to ensure controls are visible
-        UIElements.videoElement.addEventListener('loadedmetadata', () => {
-            if (isAspectRatioLocked && UIElements.videoElement.videoWidth) {
-                const videoRatio = UIElements.videoElement.videoWidth / UIElements.videoElement.videoHeight;
-                const currentWidth = UIElements.videoModalContainer.offsetWidth;
-
-                // Calculate header height
-                const header = UIElements.videoModalContainer.querySelector('.flex.justify-between');
-                const headerHeight = header ? header.offsetHeight : 0;
-
-                const targetHeight = (currentWidth / videoRatio) + headerHeight;
-                UIElements.videoModalContainer.style.height = `${targetHeight}px`;
-            }
-        }, { once: true });
+        if (UIElements.videoElement.readyState >= 1) {
+            updatePlayerModalAspectRatio();
+        }
 
         UIElements.videoElement.volume = parseFloat(localStorage.getItem('iptvPlayerVolume') || 0.5);
 
@@ -366,6 +379,14 @@ export const playVOD = async (url, title, logo = '', startTime = 0, vodContext =
         // Show the modal
         openModal(UIElements.videoModal);
 
+        isLivePlayback = false;
+        activeSeekOffset = seekOffset;
+        currentPlaybackDuration = vodContext?.duration || 0;
+        updateYouTubeTimeDisplay();
+        if (currentPlaybackDuration <= 0) {
+            resolvePlaybackDuration(vodContext, url);
+        }
+
         // Try to play after load starts
         try {
             // Ensure volume is set
@@ -374,13 +395,16 @@ export const playVOD = async (url, title, logo = '', startTime = 0, vodContext =
                 UIElements.videoElement.currentTime = seekOffset;
             }
             await UIElements.videoElement.play();
+            if (UIElements.videoElement.readyState >= 1) {
+                updatePlayerModalAspectRatio();
+            }
             const trackContext = vodContext || {
                 contentType: url.includes('/series/') ? 'series' : 'movie',
                 contentId: url,
                 title: title,
                 logo: logo,
                 streamUrl: url,
-                duration: 0
+                duration: currentPlaybackDuration || vodContext?.duration || 0
             };
             startTracking(UIElements.videoElement, trackContext, seekOffset);
             console.log(`[VOD_PLAYER] Native playback started for: "${title}"`);
@@ -487,7 +511,7 @@ export const playVOD = async (url, title, logo = '', startTime = 0, vodContext =
         try {
             appState.player = mpegts.createPlayer({
                 type: 'mse',
-                isLive: true, // Treat as live initially
+                isLive: false, // VOD mode
                 url: streamUrlToPlay
             }, mpegtsConfig);
 
@@ -514,6 +538,14 @@ export const playVOD = async (url, title, logo = '', startTime = 0, vodContext =
             openModal(UIElements.videoModal);
             UIElements.videoTitle.textContent = title;
 
+            isLivePlayback = false;
+            activeSeekOffset = seekOffset;
+            currentPlaybackDuration = vodContext?.duration || 0;
+            updateYouTubeTimeDisplay();
+            if (currentPlaybackDuration <= 0) {
+                resolvePlaybackDuration(vodContext, streamUrlToPlay);
+            }
+
             // Attach and play
             appState.player.attachMediaElement(UIElements.videoElement);
             appState.player.load();
@@ -522,6 +554,9 @@ export const playVOD = async (url, title, logo = '', startTime = 0, vodContext =
             UIElements.videoElement.volume = parseFloat(localStorage.getItem('iptvPlayerVolume') || 0.5);
 
             await appState.player.play();
+            if (UIElements.videoElement.readyState >= 1) {
+                updatePlayerModalAspectRatio();
+            }
             console.log(`[VOD_PLAYER] Playback command issued for: "${title}"`);
             setLocalPlayerState(streamUrlToPlay, title, null); // Update cast state
             const mpegtsTrackContext = vodContext || {
@@ -530,7 +565,7 @@ export const playVOD = async (url, title, logo = '', startTime = 0, vodContext =
                 title: title,
                 logo: logo,
                 streamUrl: url,
-                duration: 0
+                duration: currentPlaybackDuration || vodContext?.duration || 0
             };
             startTracking(UIElements.videoElement, mpegtsTrackContext, seekOffset);
 
@@ -760,14 +795,37 @@ export function setupPlayerEventListeners() {
         document.getElementById('subtitle-track-menu')?.classList.add('hidden');
     });
 
-    // Update track lists when stream loads
+    // Update track lists and aspect ratio when stream loads
     UIElements.videoElement.addEventListener('loadedmetadata', () => {
-        console.log('[PLAYER] Media metadata loaded, checking for audio/subtitle tracks...');
+        console.log('[PLAYER] Media metadata loaded, checking tracks and aspect ratio...');
+        if (Number.isFinite(UIElements.videoElement.duration) && UIElements.videoElement.duration > 0) {
+            currentPlaybackDuration = UIElements.videoElement.duration;
+        }
+        updateYouTubeTimeDisplay();
+        updatePlayerModalAspectRatio();
         // Small delay to ensure tracks are fully loaded
         setTimeout(() => {
             updateAudioTrackList();
             updateSubtitleTrackList();
+            updatePlayerModalAspectRatio();
         }, 500);
+    });
+
+    UIElements.videoElement.addEventListener('timeupdate', () => {
+        updateYouTubeTimeDisplay();
+    });
+
+    UIElements.videoElement.addEventListener('durationchange', () => {
+        if (Number.isFinite(UIElements.videoElement.duration) && UIElements.videoElement.duration > 0) {
+            currentPlaybackDuration = UIElements.videoElement.duration;
+            updateYouTubeTimeDisplay();
+        }
+    });
+
+    setupTimeBadgeHoverListeners();
+
+    UIElements.videoElement.addEventListener('resize', () => {
+        updatePlayerModalAspectRatio();
     });
 
     // Also check when tracks change
@@ -784,6 +842,9 @@ let isAspectRatioLocked = true; // Default to locked
 export const toggleAspectRatioLock = () => {
     isAspectRatioLocked = !isAspectRatioLocked;
     updateAspectRatioLockButton();
+    if (isAspectRatioLocked) {
+        updatePlayerModalAspectRatio();
+    }
 
     // Visual feedback
     const btn = document.getElementById('aspect-ratio-lock-btn');
@@ -822,9 +883,207 @@ export const shouldMaintainAspectRatio = () => {
     return isAspectRatioLocked;
 };
 
+export const updatePlayerModalAspectRatio = () => {
+    if (!UIElements.videoModalContainer || !UIElements.videoElement) return;
+    if (!isAspectRatioLocked) return;
+    if (!UIElements.videoElement.videoWidth || !UIElements.videoElement.videoHeight) return;
+
+    const videoRatio = UIElements.videoElement.videoWidth / UIElements.videoElement.videoHeight;
+    if (!isFinite(videoRatio) || videoRatio <= 0) return;
+
+    const currentWidth = UIElements.videoModalContainer.offsetWidth || 896;
+    const header = UIElements.videoModalContainer.querySelector('.flex.justify-between');
+    const headerHeight = header ? header.offsetHeight : 54;
+
+    const targetHeight = Math.round((currentWidth / videoRatio) + headerHeight);
+    UIElements.videoModalContainer.style.height = `${targetHeight}px`;
+};
+
 export const getVideoAspectRatio = () => {
     if (UIElements.videoElement && UIElements.videoElement.videoWidth && UIElements.videoElement.videoHeight) {
         return UIElements.videoElement.videoWidth / UIElements.videoElement.videoHeight;
     }
     return 16 / 9; // Default fallback
 };
+
+// --- YouTube-Style Playback Time Functions ---
+
+/**
+ * Formats seconds into YouTube time style (e.g. "15:39", "23:06", "1:45:00")
+ * @param {number} seconds - Elapsed or total seconds
+ * @param {number} referenceDuration - Total duration to determine if hours should be displayed
+ */
+export function formatYouTubeTime(seconds, referenceDuration = 0) {
+    if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
+    const totalSecs = Math.floor(seconds);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+
+    const showHours = hrs > 0 || (referenceDuration >= 3600);
+    const padSecs = String(secs).padStart(2, '0');
+
+    if (showHours) {
+        const padMins = String(mins).padStart(2, '0');
+        return `${hrs}:${padMins}:${padSecs}`;
+    }
+    return `${mins}:${padSecs}`;
+}
+
+/**
+ * Updates the YouTube-style time display badge and header indicator.
+ */
+export function updateYouTubeTimeDisplay() {
+    const video = UIElements.videoElement;
+    const badge = UIElements.playerTimeBadge;
+    const currentEl = UIElements.playerTimeCurrent;
+    const totalEl = UIElements.playerTimeTotal;
+    const headerTimeEl = UIElements.playerHeaderTime;
+
+    if (!video) return;
+
+    // Check if video element has native finite duration
+    if (Number.isFinite(video.duration) && video.duration > 0 && currentPlaybackDuration <= 0) {
+        currentPlaybackDuration = video.duration;
+    }
+
+    const currentSec = (activeSeekOffset || 0) + (video.currentTime || 0);
+
+    if (isLivePlayback) {
+        // Live stream mode
+        const liveCurrent = formatYouTubeTime(currentSec);
+        if (badge) {
+            badge.classList.remove('hidden');
+            if (currentEl) currentEl.innerHTML = '<span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1 animate-pulse"></span>LIVE';
+            if (totalEl) totalEl.textContent = liveCurrent;
+        }
+        if (headerTimeEl) {
+            headerTimeEl.classList.remove('hidden');
+            headerTimeEl.innerHTML = '<span class="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mr-1 animate-pulse"></span>LIVE';
+        }
+        return;
+    }
+
+    // VOD mode (Movie or Series episode)
+    if (currentPlaybackDuration > 0) {
+        const currentFormatted = formatYouTubeTime(currentSec, currentPlaybackDuration);
+        const totalFormatted = formatYouTubeTime(currentPlaybackDuration, currentPlaybackDuration);
+
+        if (badge && currentEl && totalEl) {
+            badge.classList.remove('hidden');
+            currentEl.textContent = currentFormatted;
+            totalEl.textContent = totalFormatted;
+        }
+
+        if (headerTimeEl) {
+            headerTimeEl.classList.remove('hidden');
+            headerTimeEl.textContent = `${currentFormatted} / ${totalFormatted}`;
+        }
+
+        // Try to inform MediaSource in mpegts.js if MSE allows it
+        if (appState.player && appState.player._mediaSource && appState.player._mediaSource.readyState === 'open') {
+            try {
+                if (Math.abs(appState.player._mediaSource.duration - currentPlaybackDuration) > 1) {
+                    appState.player._mediaSource.duration = currentPlaybackDuration;
+                }
+            } catch (e) {
+                // Ignore non-fatal MSE duration adjustments
+            }
+        }
+    } else {
+        // Unknown duration (fallback before metadata resolves)
+        const currentFormatted = formatYouTubeTime(currentSec);
+        if (badge && currentEl && totalEl) {
+            badge.classList.remove('hidden');
+            currentEl.textContent = currentFormatted;
+            totalEl.textContent = '--:--';
+        }
+        if (headerTimeEl) {
+            headerTimeEl.classList.remove('hidden');
+            headerTimeEl.textContent = currentFormatted;
+        }
+    }
+}
+
+/**
+ * Resolves the total media duration using our 3-tier cascade:
+ * Tier 1: Native video element metadata
+ * Tier 2: VOD context metadata (passed from movie/series data)
+ * Tier 3: Backend /api/vod/duration endpoint (DB history / metadata / ffprobe probe)
+ */
+export async function resolvePlaybackDuration(vodContext, streamUrl) {
+    // Tier 1: Check native duration
+    if (UIElements.videoElement && Number.isFinite(UIElements.videoElement.duration) && UIElements.videoElement.duration > 0) {
+        currentPlaybackDuration = UIElements.videoElement.duration;
+        updateTrackingDuration(currentPlaybackDuration);
+        updateYouTubeTimeDisplay();
+        return currentPlaybackDuration;
+    }
+
+    // Tier 2: Check context
+    if (vodContext && typeof vodContext.duration === 'number' && vodContext.duration > 0) {
+        currentPlaybackDuration = vodContext.duration;
+        updateTrackingDuration(currentPlaybackDuration);
+        updateYouTubeTimeDisplay();
+        return currentPlaybackDuration;
+    }
+
+    // Tier 3: Query backend API
+    try {
+        const contentId = vodContext?.contentId || '';
+        const episodeId = vodContext?.episodeId || '';
+        const contentType = vodContext?.contentType || '';
+        const query = new URLSearchParams({
+            url: streamUrl || vodContext?.streamUrl || '',
+            contentId: contentId,
+            episodeId: episodeId,
+            contentType: contentType
+        });
+
+        const res = await apiFetch(`/api/vod/duration?${query.toString()}`);
+        if (res && res.duration > 0) {
+            currentPlaybackDuration = res.duration;
+            updateTrackingDuration(currentPlaybackDuration);
+            console.log(`[PLAYER] Resolved duration from backend (${res.source}): ${currentPlaybackDuration}s`);
+            updateYouTubeTimeDisplay();
+            return currentPlaybackDuration;
+        }
+    } catch (e) {
+        console.warn('[PLAYER] Failed to resolve duration from backend:', e);
+    }
+
+    return 0;
+}
+
+/**
+ * Sets up mouse hover listeners so the time badge behaves like YouTube:
+ * visible on hover or when paused, fading after inactivity while playing.
+ */
+function setupTimeBadgeHoverListeners() {
+    const container = document.getElementById('video-content');
+    const badge = UIElements.playerTimeBadge;
+    if (!container || !badge) return;
+
+    const showBadge = () => {
+        badge.style.opacity = '1';
+        clearTimeout(hideBadgeTimeout);
+        hideBadgeTimeout = setTimeout(() => {
+            if (UIElements.videoElement && !UIElements.videoElement.paused) {
+                badge.style.opacity = '0';
+            }
+        }, 3500);
+    };
+
+    container.addEventListener('mousemove', showBadge);
+    container.addEventListener('mouseenter', showBadge);
+    container.addEventListener('mouseleave', () => {
+        if (UIElements.videoElement && !UIElements.videoElement.paused) {
+            badge.style.opacity = '0';
+        }
+    });
+
+    UIElements.videoElement?.addEventListener('pause', () => {
+        badge.style.opacity = '1';
+    });
+    UIElements.videoElement?.addEventListener('play', showBadge);
+}

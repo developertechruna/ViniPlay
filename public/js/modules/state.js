@@ -143,4 +143,10 @@ export const UIElements = {
 
     // --- NEW: User Editor Elements ---
     userEditorSourceList: null,
+
+    // --- NEW: Player YouTube-Style Time Display Elements ---
+    playerTimeBadge: null,
+    playerTimeCurrent: null,
+    playerTimeTotal: null,
+    playerHeaderTime: null,
 };

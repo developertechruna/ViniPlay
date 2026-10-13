@@ -28,6 +28,17 @@ const vodState = {
     },
 };
 
+function formatDurationDisplay(duration) {
+    if (!duration || duration <= 0) return 'N/A';
+    const totalSecs = Math.round(duration);
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    if (hrs > 0) {
+        return `${hrs}h ${mins}m`;
+    }
+    return `${mins}m`;
+}
+
 /**
  * Main initialization function for the VOD page.
  * This is called by the router in ui.js when switching to the VOD tab.
@@ -197,7 +208,7 @@ async function openVodDetails(item) { // Make the function async
 
     UIElements.vodDetailsYear.textContent = item.year || '';
     UIElements.vodDetailsRating.textContent = ''; // Placeholder
-    UIElements.vodDetailsDuration.textContent = ''; // Placeholder
+    UIElements.vodDetailsDuration.textContent = item.duration ? formatDurationDisplay(item.duration) : '';
     UIElements.vodDetailsGenre.textContent = item.group || 'N/A';
     UIElements.vodDetailsDirector.textContent = 'N/A'; // Placeholder
     UIElements.vodDetailsCast.textContent = 'N/A'; // Placeholder
@@ -225,7 +236,7 @@ async function openVodDetails(item) { // Make the function async
             title: item.name,
             logo: item.logo,
             streamUrl: item.url,
-            duration: 0
+            duration: item.duration || 0
         };
         UIElements.vodPlayMovieBtn.onclick = null;
         UIElements.vodPlayMovieBtn.onclick = () => {
@@ -310,11 +321,11 @@ function renderEpisodeList(series, seasonNum) {
         const originalTitle = ep.name || `Episode ${index + 1}`;
 
         return `
-            <div class="episode-item" data-url="${ep.url}" data-title="${originalTitle.replace(/"/g, '&quot;')}" data-season-num="${seasonNum}" data-episode-num="${ep.episode || index + 1}" data-id="${ep.id || ''}" data-episode-title="${epName.replace(/"/g, '&quot;')}">
+            <div class="episode-item" data-url="${ep.url}" data-title="${originalTitle.replace(/"/g, '&quot;')}" data-season-num="${seasonNum}" data-episode-num="${ep.episode || index + 1}" data-id="${ep.id || ''}" data-episode-title="${epName.replace(/"/g, '&quot;')}" data-duration="${ep.duration || 0}">
                 <div class="episode-item-epnum">${index + 1}</div>
                 <div class="episode-item-title">${epName}</div>
-                <div class="episode-item-duration">N/A</div>
-                <div class="episode-item-date">N/A</div>
+                <div class="episode-item-duration">${formatDurationDisplay(ep.duration)}</div>
+                <div class="episode-item-date">${ep.air_date || 'N/A'}</div>
                 <button class="episode-item-play-btn" title="Play Episode">
                     ${ICONS.play}
                 </button>
@@ -412,6 +423,7 @@ function setupVodEventListeners() {
             const url = episodeItem.dataset.url;
             const title = episodeItem.dataset.title;
             const seriesLogo = UIElements.vodEpisodeList.dataset.seriesLogo || '';
+            const epDuration = parseInt(episodeItem.dataset.duration, 10) || 0;
             const epContext = {
                 contentType: 'series',
                 contentId: UIElements.vodEpisodeList.dataset.seriesId || '',
@@ -423,7 +435,7 @@ function setupVodEventListeners() {
                 episodeTitle: episodeItem.dataset.episodeTitle || title,
                 logo: seriesLogo,
                 streamUrl: url,
-                duration: 0
+                duration: epDuration
             };
             playVOD(url, title, seriesLogo, 0, epContext);
             closeModal(UIElements.vodDetailsModal);

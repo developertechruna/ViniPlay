@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const express = require('express');
 const crypto = require('crypto');
-const { spawn, exec } = require('child_process');
+const { spawn, exec, execFile } = require('child_process');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -225,6 +225,8 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
                 } else {
                     // Add new column non-destructively
                     db.run("ALTER TABLE provider_episode_relations ADD COLUMN container_extension TEXT", () => { });
+                    db.run("ALTER TABLE movies ADD COLUMN duration_secs INTEGER", () => { });
+                    db.run("ALTER TABLE episodes ADD COLUMN duration_secs INTEGER", () => { });
                 }
             });
             // --- NEW: VOD Watch Progress Table (Dashboard & Resume Support) ---
@@ -2325,7 +2327,7 @@ app.get('/api/vod/library', requireAuth, async (req, res) => {
 
         // 2. Fetch all movies from active providers
         const movieQuery = `
-            SELECT m.provider_unique_id, m.name, m.year, m.description, m.logo, m.tmdb_id, m.imdb_id, m.category_name, r.stream_id, r.container_extension, r.provider_id
+            SELECT m.provider_unique_id, m.name, m.year, m.description, m.logo, m.tmdb_id, m.imdb_id, m.category_name, m.duration_secs, r.stream_id, r.container_extension, r.provider_id
             FROM movies m
             JOIN provider_movie_relations r ON m.id = r.movie_id
             WHERE r.provider_id IN (${providerIdPlaceholders})
@@ -2362,7 +2364,8 @@ app.get('/api/vod/library', requireAuth, async (req, res) => {
                 imdb_id: m.imdb_id,
                 url: url, // The all-important URL
                 type: 'movie',
-                group: m.category_name
+                group: m.category_name,
+                duration: m.duration_secs || 0
             };
         }).filter(Boolean); // Filter out null entries
         console.log(`[API_VOD] Fetched ${processedMovies.length} movies from DB.`);
@@ -2510,7 +2513,7 @@ app.get('/api/vod/series/:seriesId', requireAuth, async (req, res) => {
                 episodesToReturn = [];
             } else {
                 console.log(`[API_VOD_SERIES] Fetched ${Object.values(seriesDetails.episodes).flat().length} episodes from provider. Saving to DB...`);
-                const episodeInsertStmt = db.prepare(`INSERT OR IGNORE INTO episodes (series_id, season_num, episode_num, name, description, air_date, tmdb_id, imdb_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+                const episodeInsertStmt = db.prepare(`INSERT OR IGNORE INTO episodes (series_id, season_num, episode_num, name, description, air_date, tmdb_id, imdb_id, duration_secs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
                 const episodeRelationInsertStmt = db.prepare(`INSERT OR IGNORE INTO provider_episode_relations (provider_id, episode_id, provider_stream_id, container_extension, last_seen) VALUES (?, ?, ?, ?, ?)`);
                 const lastSeen = new Date().toISOString();
 
@@ -2524,8 +2527,9 @@ app.get('/api/vod/series/:seriesId', requireAuth, async (req, res) => {
                             if (existingEp) {
                                 episodeId = existingEp.id;
                             } else {
+                                const epDur = parseInt(epData.info?.duration_secs, 10) || parseDurationStringToSeconds(epData.info?.duration) || null;
                                 const epResult = await new Promise((resolve, reject) => {
-                                    episodeInsertStmt.run(numericSeriesId, epData.season || seasonNum, epData.episode_num, epData.title, epData.info?.plot, epData.info?.releasedate, null, null, function (err) {
+                                    episodeInsertStmt.run(numericSeriesId, epData.season || seasonNum, epData.episode_num, epData.title, epData.info?.plot, epData.info?.releasedate, null, null, epDur, function (err) {
                                         if (err) reject(err);
                                         else resolve(this);
                                     });
@@ -2600,7 +2604,8 @@ app.get('/api/vod/series/:seriesId', requireAuth, async (req, res) => {
                 tmdb_id: ep.tmdb_id,
                 season: ep.season_num,
                 episode: ep.episode_num,
-                url: epUrl
+                url: epUrl,
+                duration: ep.duration_secs || 0
             });
         });
 
@@ -2620,6 +2625,104 @@ app.get('/api/vod/series/:seriesId', requireAuth, async (req, res) => {
     }
 });
 // --- END NEW ENDPOINT ---
+
+// In-memory cache for probed stream durations (URL -> duration in seconds)
+const durationProbeCache = new Map();
+
+function parseDurationStringToSeconds(val) {
+    if (!val) return 0;
+    if (typeof val === 'number') return Math.round(val);
+    if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (/^\d+$/.test(trimmed)) return parseInt(trimmed, 10);
+        const parts = trimmed.split(':').map(Number);
+        if (parts.length === 3 && parts.every(n => !isNaN(n))) {
+            return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        }
+        if (parts.length === 2 && parts.every(n => !isNaN(n))) {
+            return parts[0] * 60 + parts[1];
+        }
+        const minMatch = trimmed.match(/^(\d+)\s*(?:min|m)/i);
+        if (minMatch) return parseInt(minMatch[1], 10) * 60;
+    }
+    return 0;
+}
+
+function probeMediaDuration(streamUrl, timeoutMs = 4000) {
+    return new Promise((resolve) => {
+        if (!streamUrl || typeof streamUrl !== 'string') return resolve(0);
+        const args = [
+            '-v', 'error',
+            '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1',
+            streamUrl
+        ];
+        execFile('ffprobe', args, { timeout: timeoutMs }, (err, stdout) => {
+            if (err) {
+                return resolve(0);
+            }
+            const sec = parseFloat((stdout || '').trim());
+            if (Number.isFinite(sec) && sec > 0) {
+                return resolve(Math.round(sec));
+            }
+            resolve(0);
+        });
+    });
+}
+
+// --- NEW: VOD Duration Endpoint (Multi-tier resolution) ---
+app.get('/api/vod/duration', requireAuth, async (req, res) => {
+    try {
+        const { url, contentId, episodeId, contentType } = req.query;
+
+        // 1. Check vod_watch_progress first (instant indexed lookup)
+        if (contentId) {
+            const epFilter = episodeId ? 'AND episode_id = ?' : '';
+            const params = episodeId ? [String(contentId), String(episodeId)] : [String(contentId)];
+            const prog = await dbGet(db, `SELECT duration FROM vod_watch_progress WHERE content_id = ? ${epFilter} AND duration > 0 ORDER BY last_watched_at DESC LIMIT 1`, params);
+            if (prog && prog.duration > 0) {
+                return res.json({ duration: Math.round(prog.duration), source: 'watch_progress' });
+            }
+        }
+
+        // 2. Check metadata in movies or episodes table
+        if (contentId) {
+            if (contentType === 'movie') {
+                const movie = await dbGet(db, `SELECT duration_secs FROM movies WHERE provider_unique_id = ?`, [String(contentId)]);
+                if (movie && movie.duration_secs > 0) {
+                    return res.json({ duration: movie.duration_secs, source: 'movies_meta' });
+                }
+            } else if (episodeId) {
+                const ep = await dbGet(db, `SELECT duration_secs FROM episodes WHERE id = ?`, [parseInt(episodeId, 10)]);
+                if (ep && ep.duration_secs > 0) {
+                    return res.json({ duration: ep.duration_secs, source: 'episodes_meta' });
+                }
+            }
+        }
+
+        // 3. Fallback: probe via ffprobe if url is available
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+            if (durationProbeCache.has(url)) {
+                return res.json({ duration: durationProbeCache.get(url), source: 'cache' });
+            }
+            const probed = await probeMediaDuration(url);
+            if (probed > 0) {
+                durationProbeCache.set(url, probed);
+                if (contentId && contentType === 'movie') {
+                    db.run('UPDATE movies SET duration_secs = ? WHERE provider_unique_id = ?', [probed, String(contentId)]);
+                } else if (episodeId) {
+                    db.run('UPDATE episodes SET duration_secs = ? WHERE id = ?', [probed, parseInt(episodeId, 10)]);
+                }
+                return res.json({ duration: probed, source: 'ffprobe' });
+            }
+        }
+
+        return res.json({ duration: 0, source: 'none' });
+    } catch (err) {
+        console.error('[API_VOD] Error getting duration:', err);
+        return res.status(500).json({ error: 'Failed to retrieve duration' });
+    }
+});
 
 // --- NEW: VOD Categories Endpoint ---
 app.get('/api/vod/categories', requireAuth, async (req, res) => {
