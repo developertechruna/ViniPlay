@@ -56,6 +56,28 @@ The server-side backend resolves common CORS and browser compatibility issues by
  - 📽️ **Single player**: Play .m3u8 and .ts links directly from the browser, with detailed console logs and recorded history
  - 👥 **Admin monitoring page**: Monitor users watch stream in real time, store historical plays, and broadcast messages to all users.
  - 📺 **VODs support**: Play your VODs from your provider, divided cleanly in the UI with a scalable grid, with filters and tabs for Movies and Series (IMPORTANT: this only workd with XC API log in)
+ - 📊 **Personalized Dashboard & Watch Progress**: Dedicated home hub featuring starred favorite live channels, "Continue Watching" cards with exact resume timestamps for movies, and a series progress summary tracker.
+ - 🌐 **Customizable Base Path (`BASE_PATH`)**: Run ViniPlay under any custom subpath (e.g., `/viniplay` or `/iptv`) or directly at the root domain (`/`), with full reverse proxy and HTTPS support.
+---
+
+## ⚡ Custom Enhancements (`feature/custom-features`)
+
+This branch introduces several core improvements designed for reverse proxy environments and enhanced playback tracking:
+
+### 1. Customizable Base Path & Reverse Proxy Support
+- **Optional Subpath**: Set `BASE_PATH=/viniplay` in `.env` or Docker to host ViniPlay under a subpath, or leave it empty/unset to host at domain root (`/`).
+- **Reverse Proxy Compatibility**: Automatic header handling for `X-Forwarded-Prefix`, `X-Forwarded-Proto`, and Express `trust proxy` support for HTTPS.
+- **Unified Routing Helper**: Client-side `withBase` / `basePath.js` ensures all API calls, stream endpoints, WebSockets, service workers, and static assets resolve correctly.
+
+### 2. Personalized Dashboard Hub
+- **Favorite Channels**: Top panel with instant access to your starred live TV channels.
+- **Continue Watching (Movies)**: Tracks exact playback timestamps and completion percentages, allowing instant one-click resume.
+- **Series In-Progress Summary**: Displays active series with episode progress (e.g. `12 / 24 vistos`) and resume button for the next episode.
+
+### 3. VOD Stream Stability & Transcoding Optimizations
+- **FFmpeg Resilience**: Injected `-reconnect`, `-reconnect_streamed`, and `-re` parameters to prevent connection drops, buffer underruns, and desync on remote streams.
+- **Container Format Auto-Fallback**: Automatically selects FFmpeg transcoding when container formats (MKV, MP4, AVI) are played under redirect profiles.
+- **Configurable VOD Settings**: Custom sync interval (default 5s) and minimum watch threshold configurable from Settings.
 ---
 
 
@@ -95,7 +117,9 @@ ViniPlay is designed for easy deployment using Docker.
         ```
         # Replace this with a long, random, and secret string
         SESSION_SECRET=your_super_secret_session_key_here
-        
+
+        # (Optional) Subpath routing for reverse proxies (e.g. /viniplay or /iptv). Leave empty for root domain (/).
+        BASE_PATH=
         ```
         
         > **Security Note:** Your `SESSION_SECRET` should be a long, random string to properly secure user sessions.
@@ -130,7 +154,7 @@ ViniPlay is designed for easy deployment using Docker.
     
 ### First-Time Setup
 
-Once the container is running, open your browser and navigate to `http://localhost:8998`. You will be prompted to create your initial **admin account**. After creating the admin account, you can log in and start configuring your sources in the **Settings** tab.
+Once the container is running, open your browser and navigate to `http://localhost:8998` (or `http://localhost:8998/your_base_path`). You will be prompted to create your initial **admin account**. After creating the admin account, you can log in and start configuring your sources in the **Settings** tab.
 
 ---
 ## 🔧 Configuration
@@ -155,16 +179,21 @@ The project is organized into a Node.js backend and a modular vanilla JavaScript
 │   │   └── modules/                 # Modular JS components for each feature
 │   │       ├── api.js               # Backend API communication
 │   │       ├── auth.js              # Authentication flow
+│   │       ├── basePath.js          # Dynamic subpath resolution (withBase)
 │   │       ├── cast.js              # Google Cast logic
+│   │       ├── dashboard.js         # Dashboard hub (Favorites, Continue Watching, Series)
 │   │       ├── dvr.js               # DVR logic
 │   │       ├── guide.js             # TV Guide logic & rendering
 │   │       ├── multiview.js         # Multi-View grid and players
 │   │       ├── notification.js      # Push notification management
 │   │       ├── player.js            # Video player (mpegts.js)
+│   │       ├── player_direct.js     # Direct stream player
 │   │       ├── settings.js          # Settings page logic
 │   │       ├── state.js             # Shared application state
-│   │       ├── ui.js                # Global UI functions (modals, etc.)
-│   │       └── utils.js             # Utility functions (parsers)
+│   │       ├── ui.js                # Global UI functions (modals, routing, etc.)
+│   │       ├── utils.js             # Utility functions (parsers)
+│   │       ├── vod.js               # VOD grid, details modal, and seasons
+│   │       └── watchTracker.js      # Playback progress tracking & resume sync
 │   ├── sw.js                        # Service Worker for push notifications
 │   └── index.html                   # Main HTML file
 │
@@ -172,7 +201,7 @@ The project is organized into a Node.js backend and a modular vanilla JavaScript
 ├── Dockerfile                       # Docker build instructions
 ├── docker-compose.yml               # Docker Compose configuration
 ├── package.json                     # Node.js dependencies
-└── .env                             # Environment variables (e.g., SESSION_SECRET)
+└── .env                             # Environment variables (e.g., SESSION_SECRET, BASE_PATH)
 
 ```
 
