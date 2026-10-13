@@ -2711,13 +2711,23 @@ app.post('/api/vod/progress', requireAuth, async (req, res) => {
 app.get('/api/vod/continue-watching', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;
-        const query = `
+        const contentType = req.query.type;
+        let query = `
             SELECT * FROM vod_watch_progress
             WHERE user_id = ? AND is_completed = 0
-            ORDER BY last_watched_at DESC
-            LIMIT 24
         `;
-        const rows = await dbAll(db, query, [userId]);
+        const params = [userId];
+
+        if (contentType && contentType !== 'all') {
+            query += ` AND content_type = ?`;
+            params.push(contentType);
+        } else if (!contentType) {
+            // Exclude series so they are not duplicated with the 'Series en Curso' section
+            query += ` AND content_type != 'series'`;
+        }
+
+        query += ` ORDER BY last_watched_at DESC LIMIT 24`;
+        const rows = await dbAll(db, query, params);
 
         const seenSeries = new Set();
         const continueItems = [];

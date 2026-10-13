@@ -1,27 +1,24 @@
 /**
  * dashboard.js
- * Manages the User Dashboard:
- * 1. Canales Favoritos (Live TV starred channels with quick playback)
- * 2. Continuar Viendo (VOD progress tracker with native .vod-item size)
- * 3. Series en Curso (Series overview with episode progression)
+ * Dedicated module for the ViniPlay Dashboard:
+ * 1. Canales Favoritos (Starred Live TV channels)
+ * 2. Continuar Viendo (Películas en curso con reanudación exacta)
+ * 3. Series en Curso (Resumen de episodios vistos/totales y reanudación)
  */
 
-import { apiFetch, fetchConfig } from './api.js';
-import { appState, guideState, UIElements } from './state.js';
-import { playVOD, playChannel } from './player.js';
+import { apiFetch } from './api.js';
 import { withBase } from './basePath.js';
-import { showNotification } from './ui.js';
+import { playVOD, playChannel } from './player.js';
+import { guideState, fetchConfig } from './state.js';
 
 let isDashboardLoading = false;
 
 /**
- * Initializes and populates the Dashboard view.
- * Called by the SPA router when navigating to /dashboard.
+ * Initializes the Dashboard page and loads all sections.
  */
 export async function initDashboardPage() {
     if (isDashboardLoading) return;
     isDashboardLoading = true;
-    console.log('[DASHBOARD] Initializing Dashboard Page...');
 
     const refreshBtn = document.getElementById('dashboard-refresh-btn');
     if (refreshBtn && !refreshBtn.dataset.hasListener) {
@@ -147,7 +144,7 @@ function createFavoriteChannelCard(channel) {
 }
 
 /**
- * Fetches and renders in-progress movies and episodes.
+ * Fetches and renders in-progress movies (series are excluded so they do not duplicate with "Series en Curso").
  */
 async function loadContinueWatching() {
     const grid = document.getElementById('dashboard-continue-grid');
@@ -155,7 +152,7 @@ async function loadContinueWatching() {
     const countBadge = document.getElementById('dashboard-continue-count');
     if (!grid) return;
 
-    grid.innerHTML = '<div class="col-span-full py-8 text-center text-gray-400">Cargando contenido en curso...</div>';
+    grid.innerHTML = '<div class="col-span-full py-8 text-center text-gray-400">Cargando contenido pendiente...</div>';
 
     try {
         const res = await apiFetch('/api/vod/continue-watching');
@@ -167,7 +164,8 @@ async function loadContinueWatching() {
         }
 
         const data = await res.json();
-        const items = data?.items || [];
+        // Filtrar series explícitamente para que no se dupliquen con "Series en Curso"
+        const items = (data?.items || []).filter(item => item.contentType !== 'series');
 
         if (countBadge) {
             countBadge.textContent = items.length;
@@ -200,17 +198,14 @@ async function loadContinueWatching() {
  */
 function createContinueCard(item) {
     const card = document.createElement('div');
-    card.className = 'vod-item group';
+    card.className = 'vod-item group cursor-pointer relative';
 
-    const isSeries = item.contentType === 'series';
     const rawLogo = item.logo || `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(item.title)}`;
     const posterUrl = rawLogo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(rawLogo)}`) : rawLogo;
-    const badgeText = isSeries ? `T${item.seasonNum}:E${item.episodeNum}` : 'Película';
-    const subTitle = isSeries ? (item.episodeTitle || `Ep. ${item.episodeNum}`) : '';
+    const badgeText = item.contentType === 'movie' ? 'Película' : 'VOD';
     const mainTitle = item.title;
     const progressPct = Math.max(2, Math.min(100, Math.round(item.percentage || 0)));
     const remainingText = item.remainingMinutes ? `${item.remainingMinutes}m restantes` : `${Math.round(item.currentTime / 60)}m vistos`;
-    const typeSubtitle = subTitle ? `${subTitle} • ${remainingText}` : remainingText;
 
     card.innerHTML = `
         <span class="vod-type-badge">${badgeText}</span>
@@ -220,7 +215,7 @@ function createContinueCard(item) {
             ✕
         </button>
 
-        <div class="vod-item-poster relative">
+        <div class="vod-item-poster">
             <img src="${posterUrl}"
                  alt="${mainTitle.replace(/"/g, '&quot;')}"
                  loading="lazy"
@@ -235,51 +230,53 @@ function createContinueCard(item) {
 
         <div class="vod-item-info">
             <p class="vod-item-title" title="${mainTitle.replace(/"/g, '&quot;')}">${mainTitle}</p>
-            <p class="vod-item-type" title="${typeSubtitle.replace(/"/g, '&quot;')}">${typeSubtitle}</p>
+            <p class="vod-item-type" title="${remainingText}">${remainingText}</p>
         </div>
     `;
 
-    // Click en la tarjeta para reanudar reproducción
+    // Click handler to resume playback
     card.addEventListener('click', (e) => {
         if (e.target.closest('.dismiss-btn')) return;
 
-        const playTitle = isSeries ? `${item.title} - T${item.seasonNum}:E${item.episodeNum} ${item.episodeTitle || ''}` : item.title;
+        console.log(`[DASHBOARD] Resuming playback: "${mainTitle}" from ${item.currentTime}s`);
+        const seekTime = item.currentTime > 0 ? item.currentTime : 0;
         const context = {
             contentType: item.contentType,
             contentId: item.contentId,
             title: item.title,
-            seriesName: item.seriesName,
-            seasonNum: item.seasonNum,
-            episodeNum: item.episodeNum,
-            episodeId: item.episodeId,
-            episodeTitle: item.episodeTitle,
             logo: item.logo,
             streamUrl: item.streamUrl,
             duration: item.duration || 0
         };
-
-        console.log(`[DASHBOARD] Resuming playback for "${playTitle}" at ${item.currentTime}s`);
-        playVOD(item.streamUrl, playTitle, item.logo, item.currentTime, context);
+        playVOD(item.streamUrl, item.title, item.logo, seekTime, context);
     });
 
-    // Descartar de continuar viendo
+    // Dismiss handler
     const dismissBtn = card.querySelector('.dismiss-btn');
-    dismissBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        try {
-            await apiFetch(`/api/vod/progress/${encodeURIComponent(item.contentId)}`, { method: 'DELETE' });
-            showNotification('Eliminado de continuar viendo', false, 2000);
-            card.remove();
-            const grid = document.getElementById('dashboard-continue-grid');
-            if (grid && grid.children.length === 0) {
-                document.getElementById('dashboard-continue-empty')?.classList.remove('hidden');
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm(`¿Eliminar "${mainTitle}" de continuar viendo?`)) return;
+
+            try {
+                await fetch(withBase(`/api/vod/progress/${encodeURIComponent(item.contentId)}`), {
+                    method: 'DELETE'
+                });
+                card.remove();
+                const grid = document.getElementById('dashboard-continue-grid');
                 const countBadge = document.getElementById('dashboard-continue-count');
-                if (countBadge) countBadge.classList.add('hidden');
+                const emptyMsg = document.getElementById('dashboard-continue-empty');
+                const remainingCards = grid?.querySelectorAll('.vod-item').length || 0;
+                if (countBadge) {
+                    countBadge.textContent = remainingCards;
+                    countBadge.classList.toggle('hidden', remainingCards === 0);
+                }
+                if (remainingCards === 0) emptyMsg?.classList.remove('hidden');
+            } catch (err) {
+                console.error('[DASHBOARD] Error removing progress:', err);
             }
-        } catch (err) {
-            console.error('[DASHBOARD] Error dismissing item:', err);
-        }
-    });
+        });
+    }
 
     return card;
 }
@@ -338,7 +335,7 @@ async function loadSeriesSummary() {
  */
 function createSeriesSummaryCard(series) {
     const card = document.createElement('div');
-    card.className = 'flex bg-gray-900 rounded-lg overflow-hidden border border-gray-700/60 p-3 gap-3 shadow hover:border-gray-600 transition-colors';
+    card.className = 'group relative flex bg-gray-900 rounded-lg overflow-hidden border border-gray-700/60 p-3 gap-3 shadow hover:border-gray-600 transition-colors cursor-pointer';
 
     const rawLogo = series.logo || `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(series.title)}`;
     const posterUrl = rawLogo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(rawLogo)}`) : rawLogo;
@@ -352,14 +349,19 @@ function createSeriesSummaryCard(series) {
         : `▶ Reproducir ${epBadge}`;
 
     card.innerHTML = `
-        <div class="w-20 sm:w-24 aspect-[2/3] flex-shrink-0 rounded bg-gray-700 overflow-hidden">
+        <!-- Botón Descartar Serie (hover) -->
+        <button type="button" class="dismiss-series-btn absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded bg-black/75 hover:bg-red-600 text-gray-300 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer" title="Descartar serie">
+            ✕
+        </button>
+
+        <div class="w-20 sm:w-24 aspect-[2/3] flex-shrink-0 rounded bg-gray-700 overflow-hidden relative">
             <img src="${posterUrl}"
                  alt="${series.title.replace(/"/g, '&quot;')}"
-                 class="w-full h-full object-cover"
+                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                  loading="lazy"
                  onerror="this.onerror=null; this.src='https://placehold.co/400x600/1f2937/d1d5db?text=No+Poster'; this.style.objectFit='cover';">
         </div>
-        <div class="flex flex-col justify-between flex-grow min-w-0">
+        <div class="flex flex-col justify-between flex-grow min-w-0 pr-6">
             <div>
                 <h4 class="text-sm font-bold text-white truncate" title="${series.title.replace(/"/g, '&quot;')}">
                     ${series.title}
@@ -392,26 +394,57 @@ function createSeriesSummaryCard(series) {
         </div>
     `;
 
-    const resumeBtn = card.querySelector('.resume-series-btn');
-    if (resumeBtn && activeEp) {
-        resumeBtn.addEventListener('click', () => {
-            const streamUrl = activeEp.stream_url;
-            const title = `${series.title} - ${epBadge}${epTitle}`;
-            const seekTime = isPaused ? activeEp.current_time : 0;
-            const context = {
-                contentType: 'series',
-                contentId: series.contentId,
-                title: series.title,
-                seriesName: series.title,
-                seasonNum: activeEp.season_num,
-                episodeNum: activeEp.episode_num,
-                episodeId: activeEp.episode_id,
-                episodeTitle: activeEp.episode_title,
-                logo: series.logo,
-                streamUrl: streamUrl,
-                duration: activeEp.duration || 0
-            };
-            playVOD(streamUrl, title, series.logo, seekTime, context);
+    const playSeriesEpisode = () => {
+        if (!activeEp) return;
+        const streamUrl = activeEp.stream_url;
+        const title = `${series.title} - ${epBadge}${epTitle}`;
+        const seekTime = isPaused ? activeEp.current_time : 0;
+        const context = {
+            contentType: 'series',
+            contentId: series.contentId,
+            title: series.title,
+            seriesName: series.title,
+            seasonNum: activeEp.season_num,
+            episodeNum: activeEp.episode_num,
+            episodeId: activeEp.episode_id,
+            episodeTitle: activeEp.episode_title,
+            logo: series.logo,
+            streamUrl: streamUrl,
+            duration: activeEp.duration || 0
+        };
+        playVOD(streamUrl, title, series.logo, seekTime, context);
+    };
+
+    // Click anywhere on card to play
+    card.addEventListener('click', (e) => {
+        if (e.target.closest('.dismiss-series-btn')) return;
+        playSeriesEpisode();
+    });
+
+    // Dismiss series handler
+    const dismissBtn = card.querySelector('.dismiss-series-btn');
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm(`¿Eliminar la serie "${series.title}" de series en curso?`)) return;
+
+            try {
+                await fetch(withBase(`/api/vod/progress/${encodeURIComponent(series.contentId)}`), {
+                    method: 'DELETE'
+                });
+                card.remove();
+                const grid = document.getElementById('dashboard-series-grid');
+                const countBadge = document.getElementById('dashboard-series-count');
+                const emptyMsg = document.getElementById('dashboard-series-empty');
+                const remainingCards = grid?.querySelectorAll('.group').length || 0;
+                if (countBadge) {
+                    countBadge.textContent = remainingCards;
+                    countBadge.classList.toggle('hidden', remainingCards === 0);
+                }
+                if (remainingCards === 0) emptyMsg?.classList.remove('hidden');
+            } catch (err) {
+                console.error('[DASHBOARD] Error removing series progress:', err);
+            }
         });
     }
 
