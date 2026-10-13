@@ -78,6 +78,12 @@ This branch introduces several core improvements designed for reverse proxy envi
 - **FFmpeg Resilience**: Injected `-reconnect`, `-reconnect_streamed`, and `-re` parameters to prevent connection drops, buffer underruns, and desync on remote streams.
 - **Container Format Auto-Fallback**: Automatically selects FFmpeg transcoding when container formats (MKV, MP4, AVI) are played under redirect profiles.
 - **Configurable VOD Settings**: Custom sync interval (default 5s) and minimum watch threshold configurable from Settings.
+
+### 4. Integration with [ambiente-docker](https://github.com/developertechruna/ambiente-docker)
+This branch is tailored to integrate with the Docker deployment ecosystem in [developertechruna/ambiente-docker](https://github.com/developertechruna/ambiente-docker):
+- **Centralized Reverse Proxy**: Aligns with the Nginx configurations located in `manifests/viniplay/`, enabling ViniPlay to coexist under the `/viniplay` subpath alongside multiple services without port collisions or domain fragmentation.
+- **Header Synchronization**: Consumes `X-Forwarded-Prefix`, `X-Forwarded-Proto`, and WebSocket upgrade headers provided by the `ambiente-docker` proxy stack to ensure seamless video streaming, API proxying, and push notification delivery.
+- **Ready-to-Use Docker Stack**: Works out-of-the-box with the Compose manifests, automated network policies, and persistent storage layouts defined in the `ambiente-docker` repository.
 ---
 
 
