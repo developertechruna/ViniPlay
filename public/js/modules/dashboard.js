@@ -6,10 +6,10 @@
  * 3. Series en Curso (Resumen de episodios vistos/totales y reanudación)
  */
 
-import { apiFetch } from './api.js';
+import { apiFetch, fetchConfig } from './api.js';
 import { withBase } from './basePath.js';
 import { playVOD, playChannel } from './player.js';
-import { guideState, fetchConfig } from './state.js';
+import { guideState } from './state.js';
 
 let isDashboardLoading = false;
 
