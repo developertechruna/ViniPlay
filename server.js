@@ -330,7 +330,7 @@ function serveIndexHtml(req, res) {
 
         if (basePath) {
             outputHtml = outputHtml
-                .replace(/href="\/viniplay\.png"/g, `href="${basePath}/viniplay.png"`)
+                .replace(/(href|src)="\/viniplay\.png"/g, `$1="${basePath}/viniplay.png"`)
                 .replace(/href="\/manifest\.json"/g, `href="${basePath}/manifest.json"`)
                 .replace(/src="\/js\//g, `src="${basePath}/js/`);
         }

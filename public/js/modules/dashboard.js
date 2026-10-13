@@ -1,13 +1,14 @@
 /**
  * dashboard.js
- * Manages the User Dashboard: Continue Watching carousel, Series Hub progress,
- * and seamless one-click resume playback.
- * Redesigned to 100% adhere to ViniPlay native design system.
+ * Manages the User Dashboard:
+ * 1. Canales Favoritos (Live TV starred channels with quick playback)
+ * 2. Continuar Viendo (VOD progress tracker with native .vod-item size)
+ * 3. Series en Curso (Series overview with episode progression)
  */
 
-import { apiFetch } from './api.js';
-import { appState, UIElements } from './state.js';
-import { playVOD } from './player.js';
+import { apiFetch, fetchConfig } from './api.js';
+import { appState, guideState, UIElements } from './state.js';
+import { playVOD, playChannel } from './player.js';
 import { withBase } from './basePath.js';
 import { showNotification } from './ui.js';
 
@@ -26,7 +27,8 @@ export async function initDashboardPage() {
     if (refreshBtn && !refreshBtn.dataset.hasListener) {
         refreshBtn.dataset.hasListener = 'true';
         refreshBtn.addEventListener('click', () => {
-            console.log('[DASHBOARD] Refresh triggered');
+            console.log('[DASHBOARD] Manual refresh triggered');
+            loadFavoriteChannels();
             loadContinueWatching();
             loadSeriesSummary();
         });
@@ -34,6 +36,7 @@ export async function initDashboardPage() {
 
     try {
         await Promise.all([
+            loadFavoriteChannels(),
             loadContinueWatching(),
             loadSeriesSummary()
         ]);
@@ -42,6 +45,105 @@ export async function initDashboardPage() {
     } finally {
         isDashboardLoading = false;
     }
+}
+
+/**
+ * Fetches and renders favorite Live TV channels marked with star (★).
+ */
+async function loadFavoriteChannels() {
+    const grid = document.getElementById('dashboard-favorites-grid');
+    const emptyMsg = document.getElementById('dashboard-favorites-empty');
+    const countBadge = document.getElementById('dashboard-favorites-count');
+    if (!grid) return;
+
+    grid.innerHTML = '<div class="col-span-full py-6 text-center text-gray-400">Cargando canales favoritos...</div>';
+
+    try {
+        let channels = guideState.channels || [];
+
+        // If channels are not yet in memory, fetch config and parse
+        if (channels.length === 0) {
+            const config = await fetchConfig();
+            if (config) {
+                if (config.settings) {
+                    Object.assign(guideState.settings, config.settings);
+                }
+                if (config.m3uContent) {
+                    const { parseM3U } = await import('./utils.js');
+                    guideState.channels = parseM3U(config.m3uContent);
+                    channels = guideState.channels;
+                }
+            }
+        }
+
+        const favoriteIds = new Set(guideState.settings?.favorites || []);
+        const favChannels = channels.filter(ch => favoriteIds.has(ch.id) || ch.isFavorite);
+
+        if (countBadge) {
+            countBadge.textContent = favChannels.length;
+            countBadge.classList.toggle('hidden', favChannels.length === 0);
+        }
+
+        if (favChannels.length === 0) {
+            grid.innerHTML = '';
+            emptyMsg?.classList.remove('hidden');
+            return;
+        }
+
+        emptyMsg?.classList.add('hidden');
+        grid.innerHTML = '';
+
+        favChannels.forEach(ch => {
+            const card = createFavoriteChannelCard(ch);
+            grid.appendChild(card);
+        });
+    } catch (err) {
+        console.error('[DASHBOARD] Error loading favorite channels:', err);
+        grid.innerHTML = '';
+        emptyMsg?.classList.remove('hidden');
+        if (countBadge) countBadge.classList.add('hidden');
+    }
+}
+
+/**
+ * Creates an interactive card for a Favorite Live Channel using .vod-item styling.
+ */
+function createFavoriteChannelCard(channel) {
+    const card = document.createElement('div');
+    card.className = 'vod-item group cursor-pointer';
+
+    const rawLogo = channel.logo || '';
+    const logoUrl = rawLogo
+        ? (rawLogo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(rawLogo)}`) : rawLogo)
+        : 'https://placehold.co/300x450/1f2937/d1d5db?text=LIVE+TV';
+    const channelName = channel.displayName || channel.name || 'Canal';
+    const groupName = channel.group || 'Live TV';
+
+    card.innerHTML = `
+        <span class="vod-type-badge text-yellow-400 font-bold">★ LIVE</span>
+
+        <div class="vod-item-poster bg-gray-900 flex items-center justify-center p-3 relative">
+            <img src="${logoUrl}"
+                 alt="${channelName.replace(/"/g, '&quot;')}"
+                 class="max-w-full max-h-full object-contain filter drop-shadow group-hover:scale-105 transition-transform duration-300"
+                 loading="lazy"
+                 onerror="this.onerror=null; this.src='https://placehold.co/300x450/1f2937/d1d5db?text=LIVE';">
+        </div>
+
+        <div class="vod-item-info">
+            <p class="vod-item-title group-hover:text-yellow-400 transition-colors" title="${channelName.replace(/"/g, '&quot;')}">
+                ${channelName}
+            </p>
+            <p class="vod-item-type" title="${groupName.replace(/"/g, '&quot;')}">${groupName}</p>
+        </div>
+    `;
+
+    card.addEventListener('click', () => {
+        console.log(`[DASHBOARD] Playing favorite channel: ${channelName}`);
+        playChannel(channel.url, channelName, channel.id);
+    });
+
+    return card;
 }
 
 /**
@@ -94,7 +196,7 @@ async function loadContinueWatching() {
 }
 
 /**
- * Creates an interactive card for Continue Watching matching ViniPlay's native .vod-item design.
+ * Creates an interactive card for Continue Watching matching ViniPlay's native .vod-item size and design.
  */
 function createContinueCard(item) {
     const card = document.createElement('div');
@@ -104,16 +206,17 @@ function createContinueCard(item) {
     const rawLogo = item.logo || `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(item.title)}`;
     const posterUrl = rawLogo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(rawLogo)}`) : rawLogo;
     const badgeText = isSeries ? `T${item.seasonNum}:E${item.episodeNum}` : 'Película';
-    const subTitle = isSeries ? (item.episodeTitle || `Episodio ${item.episodeNum}`) : (item.title);
+    const subTitle = isSeries ? (item.episodeTitle || `Ep. ${item.episodeNum}`) : '';
     const mainTitle = item.title;
     const progressPct = Math.max(2, Math.min(100, Math.round(item.percentage || 0)));
-    const remainingText = item.remainingMinutes ? `Quedan ${item.remainingMinutes} min` : `${Math.round(item.currentTime / 60)} min vistos`;
+    const remainingText = item.remainingMinutes ? `${item.remainingMinutes}m restantes` : `${Math.round(item.currentTime / 60)}m vistos`;
+    const typeSubtitle = subTitle ? `${subTitle} • ${remainingText}` : remainingText;
 
     card.innerHTML = `
         <span class="vod-type-badge">${badgeText}</span>
 
         <!-- Botón Descartar (hover) -->
-        <button type="button" class="dismiss-btn absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded bg-black/75 hover:bg-red-600 text-gray-300 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer" title="Descartar">
+        <button type="button" class="dismiss-btn absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded bg-black/75 hover:bg-red-600 text-gray-300 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer" title="Descartar">
             ✕
         </button>
 
@@ -121,21 +224,18 @@ function createContinueCard(item) {
             <img src="${posterUrl}"
                  alt="${mainTitle.replace(/"/g, '&quot;')}"
                  loading="lazy"
+                 class="group-hover:scale-105 transition-transform duration-300"
                  onerror="this.onerror=null; this.src='https://placehold.co/400x600/1f2937/d1d5db?text=No+Poster'; this.style.objectFit='cover';">
             
-            <!-- Barra de progreso sobre el póster -->
-            <div class="absolute bottom-0 left-0 right-0 h-1.5 bg-gray-900/90">
+            <!-- Barra de progreso integrada al pie del póster -->
+            <div class="absolute bottom-0 left-0 right-0 h-1 bg-gray-900/90">
                 <div class="h-full bg-blue-600 transition-all" style="width: ${progressPct}%;"></div>
             </div>
         </div>
 
         <div class="vod-item-info">
             <p class="vod-item-title" title="${mainTitle.replace(/"/g, '&quot;')}">${mainTitle}</p>
-            <div class="flex items-center justify-between text-xs text-gray-400 mt-1">
-                <span class="truncate" title="${subTitle.replace(/"/g, '&quot;')}">${subTitle}</span>
-                <span class="text-blue-400 font-semibold ml-1 flex-shrink-0">${progressPct}%</span>
-            </div>
-            <p class="text-[11px] text-gray-500 mt-0.5">${remainingText}</p>
+            <p class="vod-item-type" title="${typeSubtitle.replace(/"/g, '&quot;')}">${typeSubtitle}</p>
         </div>
     `;
 

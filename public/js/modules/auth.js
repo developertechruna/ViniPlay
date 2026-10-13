@@ -299,6 +299,9 @@ const showApp = (user) => {
         UIElements.userDisplay.textContent = user.username;
     }
     UIElements.userDisplay.classList.remove('hidden');
+    document.querySelectorAll('img[src*="viniplay.png"]').forEach(img => {
+        img.src = withBase('/viniplay.png');
+    });
 
     console.log(`[AUTH_UI] User display set to: ${user.username}.`);
 
