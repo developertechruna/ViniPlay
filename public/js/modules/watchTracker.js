@@ -133,12 +133,6 @@ export function startTracking(videoElement, context, seekOffset = 0) {
     }, intervalMs);
 }
 
-export function updateTrackingDuration(duration) {
-    if (activeContext && duration > 0) {
-        activeContext.duration = duration;
-    }
-}
-
 export function stopTracking() {
     if (activeContext && videoElementRef) {
         sendProgressUpdate(true); // Final sync
