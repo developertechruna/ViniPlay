@@ -5,7 +5,7 @@
  */
 
 import { appState, UIElements, guideState } from './state.js'; // Keep guideState for settings
-import { openModal, closeModal, showNotification } from './ui.js';
+import { openModal, closeModal, showNotification, navigate } from './ui.js';
 import { ICONS } from './icons.js';
 import { saveUserSetting, fetchVodLibrary, fetchSeriesDetails } from './api.js';
 import { playVOD } from './player.js';
@@ -46,31 +46,30 @@ function formatDurationDisplay(duration) {
 export async function initVodPage() {
     console.log('[VOD] Initializing VOD Page...');
 
-    // 1. Fetch the structured library from the server
-    const library = await fetchVodLibrary();
+    // 1. Fetch the structured library from the server (only if not already loaded)
+    if (!vodState.fullLibrary || vodState.fullLibrary.length === 0) {
+        const library = await fetchVodLibrary();
 
-    if (library) {
-        // --- MODIFY THIS PART ---
-        // Combine movies and series (which now only contain basic info)
-        vodState.fullLibrary = [...library.movies, ...library.series];
-        // Ensure all IDs are strings for consistent lookup later
-        vodState.fullLibrary.forEach(item => item.id = String(item.id));
-        vodState.fullLibrary.sort((a, b) => a.name.localeCompare(b.name));
-        console.log(`[VOD] Library loaded: ${library.movies.length} movies, ${library.series.length} series headers.`);
-        // --- END MODIFICATION ---
-    } else {
-        console.error('[VOD] Failed to load VOD library from server.');
-        vodState.fullLibrary = [];
-        showNotification('Could not load VOD library.', true);
+        if (library) {
+            vodState.fullLibrary = [...library.movies, ...library.series];
+            vodState.fullLibrary.forEach(item => item.id = String(item.id));
+            vodState.fullLibrary.sort((a, b) => a.name.localeCompare(b.name));
+            console.log(`[VOD] Library loaded: ${library.movies.length} movies, ${library.series.length} series headers.`);
+            // 2. Populate the category filter dropdown
+            populateVodGroups(library.categories);
+            if (UIElements.vodGroupFilter) UIElements.vodGroupFilter.value = 'all';
+        } else {
+            console.error('[VOD] Failed to load VOD library from server.');
+            vodState.fullLibrary = [];
+            showNotification('Could not load VOD library.', true);
+        }
     }
-
-    // 2. Populate the category filter dropdown
-    populateVodGroups(library.categories); // Pass fetched categories
-    UIElements.vodGroupFilter.value = 'all'; // Ensure "All Categories" is selected
 
     // 3. Set initial state of the VOD Direct Play checkbox
     const savedVodDirectPlay = guideState.settings.vodDirectPlayEnabled === true;
-    UIElements.vodDirectPlayCheckbox.checked = savedVodDirectPlay;
+    if (UIElements.vodDirectPlayCheckbox) {
+        UIElements.vodDirectPlayCheckbox.checked = savedVodDirectPlay;
+    }
     console.log(`[VOD] Initial VOD Direct Play state: ${savedVodDirectPlay}`);
 
     // 4. Render the grid
@@ -190,43 +189,148 @@ function renderVodGrid() {
 
 
 /**
- * Opens the VOD details modal and populates it with item info.
- * Handles lazy loading for series episodes.
- * @param {object} item - The movie or series object (basic info) to display.
+ * Navigates to the VOD details page for a specific item.
+ * @param {object} item - The movie or series item.
  */
-async function openVodDetails(item) { // Make the function async
+export function openVodDetails(item) {
+    if (!item) return;
+    const itemId = String(item.id || '');
+    if (!itemId) return;
+    navigate(`/vod/details/${encodeURIComponent(itemId)}`);
+}
+
+/**
+ * Initializes and renders the VOD Details Page for a given URL path.
+ * Called by the SPA router in ui.js when path matches /vod/details/:id or /vod/item/:id.
+ * @param {string} path - The client route path.
+ */
+export async function initVodDetailsPage(path) {
+    console.log('[VOD] Initializing VOD Details Page for path:', path);
+    setupVodEventListeners();
+
+    // 1. Extract item ID from path or URL query parameters
+    let itemId = null;
+    try {
+        const urlObj = new URL(window.location.href);
+        if (urlObj.searchParams.has('id')) {
+            itemId = urlObj.searchParams.get('id');
+        }
+    } catch (_) { }
+
+    if (!itemId) {
+        const match = path.match(/^\/vod\/(?:details|item)\/([^/?#]+)/);
+        if (match) {
+            itemId = decodeURIComponent(match[1]);
+        }
+    }
+
+    if (!itemId) {
+        console.warn('[VOD] No item ID found in details path:', path);
+        navigate('/vod');
+        return;
+    }
+
+    // 2. Ensure library is loaded (e.g. if arriving via direct link or refresh)
+    if (!vodState.fullLibrary || vodState.fullLibrary.length === 0) {
+        showVodDetailsSkeleton();
+        const library = await fetchVodLibrary();
+        if (library) {
+            vodState.fullLibrary = [...library.movies, ...library.series];
+            vodState.fullLibrary.forEach(item => item.id = String(item.id));
+            vodState.fullLibrary.sort((a, b) => a.name.localeCompare(b.name));
+            populateVodGroups(library.categories);
+        } else {
+            vodState.fullLibrary = [];
+        }
+    }
+
+    // 3. Find item in library
+    const item = vodState.fullLibrary.find(i => String(i.id) === String(itemId));
+    if (!item) {
+        console.error(`[VOD] Item not found with ID: ${itemId}`);
+        showVodItemNotFound(itemId);
+        return;
+    }
+
+    // 4. Render details onto page
+    await renderVodDetails(item);
+}
+
+/**
+ * Renders the item information onto the VOD details page.
+ * @param {object} item - The movie or series object.
+ */
+async function renderVodDetails(item) {
     if (!item) return;
 
-    // --- Common Fields (with image proxy) ---
-    UIElements.vodDetailsTitle.textContent = item.name;
+    // Scroll to top of details page
+    if (UIElements.pageVodDetails) {
+        UIElements.pageVodDetails.scrollTop = 0;
+    }
 
-    // Use image proxy for modal posters/backdrops
-    const posterUrl = item.logo || `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(item.name)}`;
+    const safeName = item.name || (item.type === 'series' ? 'Serie' : 'Película');
+    const placeholderPoster = `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(safeName)}`;
+    const posterUrl = item.logo || placeholderPoster;
     const proxiedPoster = posterUrl.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(posterUrl)}`) : posterUrl;
-    UIElements.vodDetailsPoster.src = proxiedPoster;
-    UIElements.vodDetailsBackdropImg.src = item.logo ? proxiedPoster : '';
 
-    UIElements.vodDetailsYear.textContent = item.year || '';
-    UIElements.vodDetailsRating.textContent = ''; // Placeholder
-    UIElements.vodDetailsDuration.textContent = item.duration ? formatDurationDisplay(item.duration) : '';
-    UIElements.vodDetailsGenre.textContent = item.group || 'N/A';
-    UIElements.vodDetailsDirector.textContent = 'N/A'; // Placeholder
-    UIElements.vodDetailsCast.textContent = 'N/A'; // Placeholder
-    UIElements.vodDetailsDesc.textContent = item.description || `Details for ${item.name}.`; // Use description if available
+    if (UIElements.vodDetailsTitle) UIElements.vodDetailsTitle.textContent = safeName;
+    if (UIElements.vodDetailsPoster) {
+        UIElements.vodDetailsPoster.src = proxiedPoster;
+        UIElements.vodDetailsPoster.alt = safeName;
+        UIElements.vodDetailsPoster.onerror = function () {
+            this.onerror = null;
+            this.src = placeholderPoster;
+        };
+    }
+    if (UIElements.vodDetailsBackdropImg) {
+        UIElements.vodDetailsBackdropImg.src = item.logo ? proxiedPoster : '';
+    }
 
-    // --- Reset visibility and clear previous dynamic content ---
-    UIElements.vodDetailsMovieActions.classList.add('hidden');
-    UIElements.vodDetailsSeriesActions.classList.add('hidden');
-    UIElements.vodSeasonSelect.innerHTML = '';
-    UIElements.vodEpisodeList.innerHTML = '<div class="p-4 text-center text-gray-400">Loading episodes...</div>'; // Show loading state
+    // Metadata
+    if (UIElements.vodDetailsYear) {
+        UIElements.vodDetailsYear.textContent = item.year || '';
+        UIElements.vodDetailsYear.classList.toggle('hidden', !item.year);
+    }
+    if (UIElements.vodDetailsDuration) {
+        const formattedDur = item.duration ? formatDurationDisplay(item.duration) : '';
+        UIElements.vodDetailsDuration.textContent = formattedDur;
+        UIElements.vodDetailsDuration.classList.toggle('hidden', !formattedDur);
+    }
+    if (UIElements.vodDetailsRating) {
+        UIElements.vodDetailsRating.textContent = item.rating ? `★ ${item.rating}` : '';
+        UIElements.vodDetailsRating.classList.toggle('hidden', !item.rating);
+    }
+    if (UIElements.vodDetailsGenre) {
+        UIElements.vodDetailsGenre.textContent = item.group || 'N/A';
+    }
+    if (UIElements.vodDetailsGenreBadge) {
+        UIElements.vodDetailsGenreBadge.textContent = item.group || 'VOD';
+        UIElements.vodDetailsGenreBadge.classList.toggle('hidden', !item.group);
+    }
+    if (UIElements.vodDetailsDirector) {
+        UIElements.vodDetailsDirector.textContent = item.director || 'N/A';
+    }
+    if (UIElements.vodDetailsCast) {
+        UIElements.vodDetailsCast.textContent = item.cast || 'N/A';
+    }
+    if (UIElements.vodDetailsDesc) {
+        UIElements.vodDetailsDesc.textContent = item.description || `Detalles para ${safeName}.`;
+    }
 
-    // Open the modal immediately to show the loading state
-    openModal(UIElements.vodDetailsModal);
+    // Reset visibility
+    if (UIElements.vodDetailsMovieActions) UIElements.vodDetailsMovieActions.classList.add('hidden');
+    if (UIElements.vodDetailsSeriesActions) UIElements.vodDetailsSeriesActions.classList.add('hidden');
+    if (UIElements.vodSeasonSelect) UIElements.vodSeasonSelect.innerHTML = '';
+    if (UIElements.vodEpisodeList) UIElements.vodEpisodeList.innerHTML = '';
 
-    // --- Movie Logic (No Change) ---
+    // --- Movie Logic ---
     if (item.type === 'movie') {
-        UIElements.vodDetailsType.textContent = 'Movie';
-        UIElements.vodDetailsMovieActions.classList.remove('hidden');
+        if (UIElements.vodDetailsType) {
+            UIElements.vodDetailsType.textContent = 'Película';
+            UIElements.vodDetailsType.className = 'px-3 py-1 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 text-xs';
+        }
+        if (UIElements.vodDetailsMovieActions) UIElements.vodDetailsMovieActions.classList.remove('hidden');
+
         const movieUrl = item.url;
         const movieName = item.name;
         const movieLogo = item.logo;
@@ -238,149 +342,227 @@ async function openVodDetails(item) { // Make the function async
             streamUrl: item.url,
             duration: item.duration || 0
         };
-        UIElements.vodPlayMovieBtn.onclick = null;
-        UIElements.vodPlayMovieBtn.onclick = () => {
-            playVOD(movieUrl, movieName, movieLogo, 0, movieContext);
-            closeModal(UIElements.vodDetailsModal);
-        };
 
-        // --- Series Logic (Lazy Loading) ---
+        if (UIElements.vodPlayMovieBtn) {
+            UIElements.vodPlayMovieBtn.onclick = () => {
+                playVOD(movieUrl, movieName, movieLogo, 0, movieContext);
+            };
+        }
+
+        // --- Series Logic ---
     } else if (item.type === 'series') {
-        UIElements.vodDetailsType.textContent = 'Series';
-        UIElements.vodDetailsSeriesActions.classList.remove('hidden'); // Show series section immediately
+        if (UIElements.vodDetailsType) {
+            UIElements.vodDetailsType.textContent = 'Serie';
+            UIElements.vodDetailsType.className = 'px-3 py-1 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs';
+        }
+        if (UIElements.vodDetailsSeriesActions) UIElements.vodDetailsSeriesActions.classList.remove('hidden');
 
-        // Fetch full series details including episodes
+        // Loading state
+        if (UIElements.vodEpisodeList) {
+            UIElements.vodEpisodeList.innerHTML = `
+                <div class="flex items-center justify-center p-12 text-gray-400 gap-3">
+                    <svg class="animate-spin h-6 w-6 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                    <span class="text-sm font-medium">Cargando episodios...</span>
+                </div>
+            `;
+        }
+
         const fullSeriesData = await fetchSeriesDetails(item.id);
         console.log(`[VOD] Fetched full series data for ID ${item.id}:`, fullSeriesData);
 
-        // Store series metadata on the episode list element to be accessed by the click listener
-        UIElements.vodEpisodeList.dataset.seriesLogo = fullSeriesData.logo || item.logo || '';
-        UIElements.vodEpisodeList.dataset.seriesId = fullSeriesData.id || item.id || '';
-        UIElements.vodEpisodeList.dataset.seriesName = fullSeriesData.name || item.name || '';
-
-        // --- FIX: Robust check for invalid or empty series data ---
-        if (!fullSeriesData || !fullSeriesData.seasons || Object.keys(fullSeriesData.seasons).length === 0) {
-            // Handle case where fetching fails or returns no seasons/episodes
-            const errorMessage = fullSeriesData ? "No episodes found for this series." : "Could not load episodes for this series. The provider may be offline or slow to respond.";
-            UIElements.vodEpisodeList.innerHTML = `<p class="p-4 text-center text-gray-400">${errorMessage}</p>`;
-            UIElements.vodSeasonSelect.innerHTML = '<option disabled selected>No Seasons</option>';
-            return; // IMPORTANT: Stop further processing
+        if (UIElements.vodEpisodeList) {
+            UIElements.vodEpisodeList.dataset.seriesLogo = fullSeriesData?.logo || item.logo || '';
+            UIElements.vodEpisodeList.dataset.seriesId = fullSeriesData?.id || item.id || '';
+            UIElements.vodEpisodeList.dataset.seriesName = fullSeriesData?.name || item.name || '';
         }
 
-        // --- Populate UI *after* data is fetched ---
-        const seasonSelect = UIElements.vodSeasonSelect;
-        seasonSelect.innerHTML = ''; // Clear previous options
-        const sortedSeasonKeys = Object.keys(fullSeriesData.seasons).map(Number).sort((a, b) => a - b);
+        if (!fullSeriesData || !fullSeriesData.seasons || Object.keys(fullSeriesData.seasons).length === 0) {
+            const errorMessage = fullSeriesData ? "No se encontraron episodios para esta serie." : "No se pudieron cargar los episodios de esta serie. El proveedor podría estar fuera de línea.";
+            if (UIElements.vodEpisodeList) {
+                UIElements.vodEpisodeList.innerHTML = `<p class="p-8 text-center text-gray-400">${errorMessage}</p>`;
+            }
+            if (UIElements.vodSeasonSelect) {
+                UIElements.vodSeasonSelect.innerHTML = '<option disabled selected>Sin Temporadas</option>';
+            }
+            if (UIElements.vodEpisodesCountBadge) {
+                UIElements.vodEpisodesCountBadge.textContent = '0 episodios';
+            }
+            return;
+        }
 
-        if (sortedSeasonKeys.length > 0) {
-            for (const seasonNum of sortedSeasonKeys) {
-                const option = document.createElement('option');
-                option.value = seasonNum;
-                option.textContent = `Season ${seasonNum}`;
-                seasonSelect.appendChild(option);
+        const seasonSelect = UIElements.vodSeasonSelect;
+        if (seasonSelect) {
+            seasonSelect.innerHTML = '';
+            const sortedSeasonKeys = Object.keys(fullSeriesData.seasons).map(Number).sort((a, b) => a - b);
+
+            let totalEps = 0;
+            for (const sNum of sortedSeasonKeys) {
+                totalEps += fullSeriesData.seasons[sNum]?.length || 0;
+            }
+            if (UIElements.vodEpisodesCountBadge) {
+                UIElements.vodEpisodesCountBadge.textContent = `${totalEps} episodios`;
             }
 
-            // Render episodes for the first season by default
-            renderEpisodeList(fullSeriesData, sortedSeasonKeys[0]);
+            if (sortedSeasonKeys.length > 0) {
+                for (const seasonNum of sortedSeasonKeys) {
+                    const option = document.createElement('option');
+                    option.value = seasonNum;
+                    const epCount = fullSeriesData.seasons[seasonNum]?.length || 0;
+                    option.textContent = `Temporada ${seasonNum} (${epCount} ep.)`;
+                    seasonSelect.appendChild(option);
+                }
 
-            // Add listener for season changes (only if seasons exist)
-            seasonSelect.onchange = null; // FIX: Clear previous listener
-            seasonSelect.onchange = (e) => {
-                renderEpisodeList(fullSeriesData, parseInt(e.target.value, 10));
-            };
-        } else {
-            // Handle case where series exists but has no seasons/episodes listed
-            UIElements.vodEpisodeList.innerHTML = `<p class="p-4 text-center text-gray-400">No episodes found for this series.</p>`;
-            seasonSelect.innerHTML = '<option disabled selected>No Seasons</option>';
+                renderEpisodeList(fullSeriesData, sortedSeasonKeys[0]);
+
+                seasonSelect.onchange = (e) => {
+                    renderEpisodeList(fullSeriesData, parseInt(e.target.value, 10));
+                };
+            } else {
+                UIElements.vodEpisodeList.innerHTML = `<p class="p-8 text-center text-gray-400">No se encontraron episodios para esta serie.</p>`;
+                seasonSelect.innerHTML = '<option disabled selected>Sin Temporadas</option>';
+            }
         }
     }
 }
 
 /**
- * Renders the list of episodes for a given season inside the details modal.
+ * Renders the list of episodes for a given season inside the details page.
  * @param {object} series - The full series object.
  * @param {number} seasonNum - The season number to render.
  */
 function renderEpisodeList(series, seasonNum) {
     const episodeListEl = UIElements.vodEpisodeList;
-    const episodes = series.seasons[seasonNum]; // Use object property access
+    if (!episodeListEl) return;
+    const episodes = series.seasons[seasonNum];
     console.log(`[VOD] Rendering episodes for Series ID ${series.id}, Season ${seasonNum}:`, episodes);
 
     if (!episodes || episodes.length === 0) {
-        episodeListEl.innerHTML = `<p class="p-4 text-center text-gray-400">No episodes found for this season.</p>`;
+        episodeListEl.innerHTML = `<p class="p-8 text-center text-gray-400">No hay episodios disponibles para esta temporada.</p>`;
         return;
     }
 
-    // --- UPDATED HTML STRUCTURE ---
     episodeListEl.innerHTML = episodes.map((ep, index) => {
-        // Try to get a clean episode name, fallback to the full name
         let epName = ep.name.split(' - ').pop();
-        if (epName.length < 5) epName = ep.name; // Handle cases where split fails
-
-        // Use original name for the data attribute for playback title consistency
-        const originalTitle = ep.name || `Episode ${index + 1}`;
+        if (epName.length < 5) epName = ep.name;
+        const originalTitle = ep.name || `Episodio ${index + 1}`;
+        const epNum = ep.episode || (index + 1);
 
         return `
-            <div class="episode-item" data-url="${ep.url}" data-title="${originalTitle.replace(/"/g, '&quot;')}" data-season-num="${seasonNum}" data-episode-num="${ep.episode || index + 1}" data-id="${ep.id || ''}" data-episode-title="${epName.replace(/"/g, '&quot;')}" data-duration="${ep.duration || 0}">
-                <div class="episode-item-epnum">${index + 1}</div>
-                <div class="episode-item-title">${epName}</div>
-                <div class="episode-item-duration">${formatDurationDisplay(ep.duration)}</div>
-                <div class="episode-item-date">${ep.air_date || 'N/A'}</div>
-                <button class="episode-item-play-btn" title="Play Episode">
-                    ${ICONS.play}
-                </button>
+            <div class="episode-item group flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-gray-800/80 hover:bg-gray-750 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
+                 data-url="${ep.url}"
+                 data-title="${originalTitle.replace(/"/g, '&quot;')}"
+                 data-season-num="${seasonNum}"
+                 data-episode-num="${epNum}"
+                 data-id="${ep.id || ''}"
+                 data-episode-title="${epName.replace(/"/g, '&quot;')}"
+                 data-duration="${ep.duration || 0}">
+                
+                <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-grow pr-4">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-700 group-hover:bg-blue-600/30 group-hover:text-blue-400 text-gray-300 font-bold text-xs sm:text-sm flex items-center justify-center flex-shrink-0 transition-colors border border-gray-600/60 group-hover:border-blue-500/50">
+                        ${index + 1}
+                    </div>
+                    <div class="min-w-0 flex-grow">
+                        <h4 class="text-white text-sm sm:text-base font-semibold truncate group-hover:text-blue-300 transition-colors" title="${epName.replace(/"/g, '&quot;')}">
+                            ${epName}
+                        </h4>
+                        <div class="flex items-center gap-2 sm:gap-3 text-xs text-gray-400 mt-0.5">
+                            <span class="text-purple-400 font-medium">T${seasonNum}:E${epNum}</span>
+                            ${ep.duration ? `<span>•</span><span>${formatDurationDisplay(ep.duration)}</span>` : ''}
+                            ${ep.air_date ? `<span>•</span><span>${ep.air_date}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button type="button" class="episode-item-play-btn w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-600/20 group-hover:bg-blue-600 text-blue-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow group-hover:scale-105" title="Reproducir episodio">
+                        <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8.118v3.764a1 1 0 001.555.832l3.197-1.882a1 1 0 000-1.664l-3.197-1.882z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         `;
     }).join('');
-    // --- END OF UPDATED HTML ---
 }
 
+function showVodDetailsSkeleton() {
+    if (UIElements.vodDetailsTitle) UIElements.vodDetailsTitle.textContent = 'Cargando...';
+    if (UIElements.vodDetailsDesc) UIElements.vodDetailsDesc.textContent = 'Cargando información del catálogo VOD...';
+    if (UIElements.vodDetailsPoster) {
+        UIElements.vodDetailsPoster.src = 'https://placehold.co/400x600/1f2937/374151?text=Cargando...';
+    }
+    if (UIElements.vodDetailsMovieActions) UIElements.vodDetailsMovieActions.classList.add('hidden');
+    if (UIElements.vodDetailsSeriesActions) UIElements.vodDetailsSeriesActions.classList.add('hidden');
+    if (UIElements.vodDetailsBackdropImg) UIElements.vodDetailsBackdropImg.src = '';
+}
+
+function showVodItemNotFound(itemId) {
+    if (UIElements.vodDetailsTitle) UIElements.vodDetailsTitle.textContent = 'Contenido no encontrado';
+    if (UIElements.vodDetailsDesc) {
+        UIElements.vodDetailsDesc.textContent = `No se pudo encontrar ningún título con ID "${itemId}" en la biblioteca VOD.`;
+    }
+    if (UIElements.vodDetailsPoster) {
+        UIElements.vodDetailsPoster.src = 'https://placehold.co/400x600/1f2937/d1d5db?text=No+Encontrado';
+    }
+    if (UIElements.vodDetailsMovieActions) UIElements.vodDetailsMovieActions.classList.add('hidden');
+    if (UIElements.vodDetailsSeriesActions) UIElements.vodDetailsSeriesActions.classList.add('hidden');
+    if (UIElements.vodDetailsBackdropImg) UIElements.vodDetailsBackdropImg.src = '';
+}
+
+let vodEventListenersInitialized = false;
 
 /**
- * Sets up all event listeners for the VOD page and its modals.
+ * Sets up all event listeners for the VOD page and VOD details page.
  */
 function setupVodEventListeners() {
+    if (vodEventListenersInitialized) return;
+    vodEventListenersInitialized = true;
+
+    // --- Back button on VOD Details page ---
+    UIElements.vodDetailsBackBtn?.addEventListener('click', () => {
+        navigate('/vod');
+    });
+
     // --- Filter Bar Listeners ---
-    UIElements.vodTypeAll.addEventListener('click', () => {
+    UIElements.vodTypeAll?.addEventListener('click', () => {
         UIElements.vodTypeAll.classList.add('active');
-        UIElements.vodTypeMovies.classList.remove('active');
-        UIElements.vodTypeSeries.classList.remove('active');
+        UIElements.vodTypeMovies?.classList.remove('active');
+        UIElements.vodTypeSeries?.classList.remove('active');
         renderVodGrid();
     });
-    UIElements.vodTypeMovies.addEventListener('click', () => {
-        UIElements.vodTypeAll.classList.remove('active');
+    UIElements.vodTypeMovies?.addEventListener('click', () => {
+        UIElements.vodTypeAll?.classList.remove('active');
         UIElements.vodTypeMovies.classList.add('active');
-        UIElements.vodTypeSeries.classList.remove('active');
+        UIElements.vodTypeSeries?.classList.remove('active');
         renderVodGrid();
     });
-    UIElements.vodTypeSeries.addEventListener('click', () => {
-        UIElements.vodTypeAll.classList.remove('active');
-        UIElements.vodTypeMovies.classList.remove('active');
+    UIElements.vodTypeSeries?.addEventListener('click', () => {
+        UIElements.vodTypeAll?.classList.remove('active');
+        UIElements.vodTypeMovies?.classList.remove('active');
         UIElements.vodTypeSeries.classList.add('active');
         renderVodGrid();
     });
 
-    UIElements.vodGroupFilter.addEventListener('change', renderVodGrid);
-    UIElements.vodSearchInput.addEventListener('input', () => {
+    UIElements.vodGroupFilter?.addEventListener('change', renderVodGrid);
+    UIElements.vodSearchInput?.addEventListener('input', () => {
         clearTimeout(vodState.searchDebounce);
         vodState.searchDebounce = setTimeout(renderVodGrid, 300);
     });
 
-    UIElements.vodDirectPlayCheckbox.addEventListener('change', () => {
+    UIElements.vodDirectPlayCheckbox?.addEventListener('change', () => {
         const isEnabled = UIElements.vodDirectPlayCheckbox.checked;
         guideState.settings.vodDirectPlayEnabled = isEnabled;
-        saveUserSetting('vodDirectPlayEnabled', isEnabled); // Assumes saveUserSetting is imported
+        saveUserSetting('vodDirectPlayEnabled', isEnabled);
         showNotification(`VOD Direct Play ${isEnabled ? 'enabled' : 'disabled'}.`, false, 2000);
         console.log(`[VOD] VOD Direct Play toggled to: ${isEnabled}`);
     });
 
-    // --- Pagination Listeners (Initial setup, might be re-attached in renderVodPaginationControls) ---
-    // Note: The actual page number/prev/next listeners are attached *dynamically*
-    // in renderVodPaginationControls because the elements are recreated.
-    // We only need the initial setup for the container existence check.
+    // --- Pagination Listeners ---
     const paginationContainer = document.getElementById('vod-pagination-controls');
     if (paginationContainer) {
-        // Listener for page size change is initially attached here and re-attached on render
         const pageSizeSelect = paginationContainer.querySelector('#vod-page-size-select');
         if (pageSizeSelect) {
             pageSizeSelect.addEventListener('change', changeVodPageSize);
@@ -388,36 +570,17 @@ function setupVodEventListeners() {
     }
 
     // --- VOD Grid Click Listener (Event Delegation) ---
-    UIElements.vodGrid.addEventListener('click', (e) => {
+    UIElements.vodGrid?.addEventListener('click', (e) => {
         const vodItemEl = e.target.closest('.vod-item');
         if (vodItemEl) {
-            const itemId = vodItemEl.dataset.id; // ID is always a string from data-*
-            console.log(`[VOD_CLICK] Click detected on item with data-id: ${itemId}`); // Keep log
-
-            // --- FIX: Ensure string comparison ---
-            const item = vodState.fullLibrary.find(i => String(i.id) === itemId);
-            // --- END FIX ---
-
-            if (item) {
-                console.log(`[VOD_CLICK] Found item in library:`, item); // Keep log
-                openVodDetails(item); // Call openVodDetails with the found item
-            } else {
-                // Keep error handling
-                console.error(`[VOD_CLICK] Could not find VOD item in fullLibrary with ID: ${itemId}`);
-                showNotification(`Error: Could not find details for the selected item (ID: ${itemId}).`, true);
-            }
+            const itemId = vodItemEl.dataset.id;
+            console.log(`[VOD_CLICK] Click detected on item with data-id: ${itemId}`);
+            navigate(`/vod/details/${encodeURIComponent(itemId)}`);
         }
     });
 
-    // --- VOD Details Modal Listeners ---
-    UIElements.vodDetailsCloseBtn.addEventListener('click', () => {
-        closeModal(UIElements.vodDetailsModal);
-        // Clear backdrop when closing
-        UIElements.vodDetailsBackdropImg.src = '';
-    });
-
     // Episode play click (Event Delegation)
-    UIElements.vodEpisodeList.addEventListener('click', (e) => {
+    UIElements.vodEpisodeList?.addEventListener('click', (e) => {
         const episodeItem = e.target.closest('.episode-item');
         if (episodeItem) {
             const url = episodeItem.dataset.url;
@@ -438,7 +601,6 @@ function setupVodEventListeners() {
                 duration: epDuration
             };
             playVOD(url, title, seriesLogo, 0, epContext);
-            closeModal(UIElements.vodDetailsModal);
         }
     });
 }

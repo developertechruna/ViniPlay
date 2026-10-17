@@ -60,8 +60,8 @@ const activeStreamProcesses = new Map();
 const STREAM_INACTIVITY_TIMEOUT = 30000; // 30 seconds to kill an inactive stream process
 
 // --- Configuration ---
-const DATA_DIR = '/data';
-const DVR_DIR = '/dvr';
+const DATA_DIR = process.env.DATA_DIR || '/data';
+const DVR_DIR = process.env.DVR_DIR || '/dvr';
 const LOGS_DIR = path.join(DATA_DIR, 'logs'); // NEW: Log management directory
 const VAPID_KEYS_PATH = path.join(DATA_DIR, 'vapid.json');
 const SOURCES_DIR = path.join(DATA_DIR, 'sources');

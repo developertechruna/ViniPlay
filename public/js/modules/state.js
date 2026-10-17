@@ -94,7 +94,11 @@ export const UIElements = {
     vodGrid: null,
     vodDirectPlayCheckbox: null,
 
-    // --- NEW: VOD Details Modal ---
+    // --- NEW: VOD Details Page Elements ---
+    pageVodDetails: null,
+    vodDetailsBackBtn: null,
+    vodDetailsGenreBadge: null,
+    vodEpisodesCountBadge: null,
     vodDetailsModal: null,
     vodDetailsContainer: null,
     vodDetailsCloseBtn: null,

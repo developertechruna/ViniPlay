@@ -16,7 +16,7 @@ import { initDirectPlayer, isDirectPlayerActive, cleanupDirectPlayer } from './p
 import { finalizeGuideLoad, handleGuideLoad } from './guide.js';
 import { fetchConfig } from './api.js';
 import { initActivityPage } from './admin.js';
-import { initVodPage } from './vod.js';
+import { initVodPage, initVodDetailsPage } from './vod.js';
 import { withBase, stripBase } from './basePath.js';
 
 
@@ -413,7 +413,8 @@ async function proceedWithRouteChange(path) {
     const isMultiView = path.startsWith('/multiview');
     const isPlayer = path.startsWith('/player');
     const isDvr = path.startsWith('/dvr');
-    const isVod = path.startsWith('/vod');
+    const isVodDetails = path.startsWith('/vod/details') || path.startsWith('/vod/item');
+    const isVod = path.startsWith('/vod') && !isVodDetails;
     const isDashboard = path.startsWith('/dashboard');
     const isActivity = path.startsWith('/activity');
     const isNotifications = path.startsWith('/notifications');
@@ -437,9 +438,9 @@ async function proceedWithRouteChange(path) {
     if (UIElements.tabDvr) UIElements.tabDvr.classList.toggle('active', isDvr);
     if (UIElements.mobileNavDvr) UIElements.mobileNavDvr.classList.toggle('active', isDvr);
 
-    // VOD tab is visible to all
-    if (UIElements.tabVod) UIElements.tabVod.classList.toggle('active', isVod);
-    if (UIElements.mobileNavVod) UIElements.mobileNavVod.classList.toggle('active', isVod);
+    // VOD tab is visible to all (active for both catalog and item details)
+    if (UIElements.tabVod) UIElements.tabVod.classList.toggle('active', isVod || isVodDetails);
+    if (UIElements.mobileNavVod) UIElements.mobileNavVod.classList.toggle('active', isVod || isVodDetails);
     // Dashboard active state (uses native .tab-button.active)
     UIElements.userDisplay?.classList.toggle('active', isDashboard);
     UIElements.mobileNavDashboard?.classList.toggle('active', isDashboard);
@@ -484,8 +485,14 @@ async function proceedWithRouteChange(path) {
     UIElements.pageDvr.classList.toggle('flex', isDvr);
 
     // Show VOD page to everyone
-    UIElements.pageVod.classList.toggle('hidden', !isVod);
-    UIElements.pageVod.classList.toggle('flex', isVod);
+    UIElements.pageVod?.classList.toggle('hidden', !isVod);
+    UIElements.pageVod?.classList.toggle('flex', isVod);
+
+    // Show VOD Details page when viewing a specific movie/series
+    if (UIElements.pageVodDetails) {
+        UIElements.pageVodDetails.classList.toggle('hidden', !isVodDetails);
+        UIElements.pageVodDetails.classList.toggle('flex', isVodDetails);
+    }
     // Show Dashboard page
     if (UIElements.pageDashboard) {
         UIElements.pageDashboard.classList.toggle('hidden', !isDashboard);
@@ -549,6 +556,8 @@ async function proceedWithRouteChange(path) {
             await initDvrPage();
         } else if (isVod) {
             await initVodPage();
+        } else if (isVodDetails) {
+            await initVodDetailsPage(path);
         } else if (isDashboard) {
             await initDashboardPage();
         } else if (isActivity && isAdmin) {

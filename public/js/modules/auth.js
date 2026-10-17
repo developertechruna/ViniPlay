@@ -158,6 +158,8 @@ const initializeUIElements = () => {
     UIElements.vodGridContainer = document.getElementById('vod-grid-container');
     UIElements.vodNoResults = document.getElementById('vod-no-results');
     UIElements.vodGrid = document.getElementById('vod-grid');
+    UIElements.pageVodDetails = document.getElementById('page-vod-details');
+    UIElements.vodDetailsBackBtn = document.getElementById('vod-details-back-btn');
     UIElements.vodDetailsModal = document.getElementById('vod-details-modal');
     UIElements.vodDetailsContainer = document.getElementById('vod-details-container');
     UIElements.vodDetailsCloseBtn = document.getElementById('vod-details-close-btn');
@@ -172,6 +174,7 @@ const initializeUIElements = () => {
     UIElements.vodDetailsType = document.getElementById('vod-details-type');
     UIElements.vodDetailsDuration = document.getElementById('vod-details-duration');
     UIElements.vodDetailsGenre = document.getElementById('vod-details-genre');
+    UIElements.vodDetailsGenreBadge = document.getElementById('vod-details-genre-badge');
     UIElements.vodDetailsDirector = document.getElementById('vod-details-director');
     UIElements.vodDetailsCast = document.getElementById('vod-details-cast');
     UIElements.vodDetailsDesc = document.getElementById('vod-details-desc');
@@ -180,6 +183,7 @@ const initializeUIElements = () => {
     UIElements.vodDetailsSeriesActions = document.getElementById('vod-details-series-actions');
     UIElements.vodSeasonSelect = document.getElementById('vod-season-select');
     UIElements.vodEpisodeList = document.getElementById('vod-episode-list');
+    UIElements.vodEpisodesCountBadge = document.getElementById('vod-episodes-count-badge');
     // --- END VOD Elements ---
 
     // Settings Buttons

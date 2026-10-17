@@ -415,6 +415,11 @@ function setupCoreEventListeners() {
     const setupTabListener = (tabElement, tabName, refreshFunction) => {
         if (!tabElement) return;
         tabElement.addEventListener('click', () => {
+            const currentPath = stripBase(window.location.pathname);
+            if (tabName === 'vod' && (currentPath.startsWith('/vod/details') || currentPath.startsWith('/vod/item'))) {
+                switchTab('vod');
+                return;
+            }
             if (tabElement.classList.contains('active')) {
                 console.log(`[NAV] Refreshing ${tabName} tab data.`);
                 if (refreshFunction) refreshFunction();

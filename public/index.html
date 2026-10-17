@@ -1651,6 +1651,96 @@
                 </div>
             </div>
 
+            <!-- VOD Details Page (Full Page View) -->
+            <div id="page-vod-details" class="hidden flex-grow flex-col overflow-y-auto custom-scrollbar bg-gray-900 min-h-0 relative select-none">
+                <!-- Hero section with cinematic banner & backdrop -->
+                <div class="relative w-full overflow-hidden flex-shrink-0 min-h-[440px] md:min-h-[500px] flex items-end">
+                    <!-- Dynamic Backdrop Image with blur & gradients -->
+                    <div id="vod-details-backdrop" class="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+                        <img id="vod-details-backdrop-img" src="" alt="Backdrop" class="w-full h-full object-cover object-center opacity-25 blur-md transform scale-105 transition-all duration-700">
+                        <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/80 to-transparent"></div>
+                        <div class="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/60 to-transparent"></div>
+                    </div>
+
+                    <!-- Top Floating Action Bar -->
+                    <div class="absolute top-4 left-4 sm:left-6 z-30 flex items-center gap-3">
+                        <button id="vod-details-back-btn" type="button"
+                            class="flex items-center gap-2 bg-gray-800/90 hover:bg-gray-700 text-gray-200 hover:text-white px-4 py-2 rounded-lg border border-gray-700/80 backdrop-blur shadow-lg transition-all duration-150 transform hover:-translate-x-0.5 cursor-pointer text-sm font-semibold">
+                            <span data-icon="arrowLeft" class="w-4 h-4"></span>
+                            <span>Volver a VODs</span>
+                        </button>
+                    </div>
+
+                    <!-- Hero Content Container -->
+                    <div class="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8 flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-end">
+                        <!-- Poster -->
+                        <div class="flex-shrink-0 mx-auto md:mx-0 shadow-2xl rounded-xl overflow-hidden border border-gray-700/60 bg-gray-800">
+                            <img id="vod-details-poster" src="" alt="Poster"
+                                class="w-44 sm:w-52 md:w-60 aspect-[2/3] object-cover transition-transform duration-300">
+                        </div>
+
+                        <!-- Main Info & Metadata -->
+                        <div class="flex-grow text-left">
+                            <!-- Metadata tags -->
+                            <div id="vod-details-meta" class="flex flex-wrap items-center gap-2 text-xs sm:text-sm mb-3">
+                                <span id="vod-details-type" class="px-3 py-1 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs"></span>
+                                <span id="vod-details-year" class="px-2.5 py-0.5 rounded-full font-medium bg-gray-800 text-gray-300 border border-gray-700"></span>
+                                <span id="vod-details-duration" class="px-2.5 py-0.5 rounded-full font-medium bg-gray-800 text-gray-300 border border-gray-700"></span>
+                                <span id="vod-details-genre-badge" class="px-2.5 py-0.5 rounded-full font-medium bg-blue-500/20 text-blue-300 border border-blue-500/40"></span>
+                                <span id="vod-details-rating" class="font-bold text-yellow-400"></span>
+                            </div>
+
+                            <!-- Title -->
+                            <h1 id="vod-details-title" class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-4 drop-shadow-md"></h1>
+
+                            <!-- Play Movie Button (for movies) -->
+                            <div id="vod-details-movie-actions" class="hidden mb-5">
+                                <button id="vod-play-movie-btn" type="button"
+                                    class="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 transition-all duration-200 transform hover:scale-102 cursor-pointer text-base sm:text-lg">
+                                    <span data-icon="play" class="w-6 h-6"></span>
+                                    <span>Reproducir Película</span>
+                                </button>
+                            </div>
+
+                            <!-- Plot summary -->
+                            <p id="vod-details-desc" class="text-gray-300 text-sm sm:text-base leading-relaxed max-w-3xl mb-4 font-normal"></p>
+
+                            <!-- Cast & Director -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-gray-400 max-w-3xl pt-3 border-t border-gray-800">
+                                <div><strong class="text-gray-400 font-semibold">Género:</strong> <span id="vod-details-genre" class="text-gray-200"></span></div>
+                                <div><strong class="text-gray-400 font-semibold">Director:</strong> <span id="vod-details-director" class="text-gray-200"></span></div>
+                                <div class="sm:col-span-2"><strong class="text-gray-400 font-semibold">Reparto:</strong> <span id="vod-details-cast" class="text-gray-200"></span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Series Episodes Section (Below Hero) -->
+                <div id="vod-details-series-actions" class="hidden flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div class="bg-gray-800/60 backdrop-blur border border-gray-700/60 rounded-2xl p-4 sm:p-6 shadow-xl">
+                        <!-- Section Header & Season Selector -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-700/50">
+                            <div class="flex items-center gap-3">
+                                <span data-icon="tv" class="w-6 h-6 text-purple-400"></span>
+                                <h2 class="text-xl sm:text-2xl font-bold text-white">Episodios</h2>
+                                <span id="vod-episodes-count-badge" class="px-2.5 py-0.5 text-xs font-semibold bg-gray-700 text-gray-300 rounded-full"></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label for="vod-season-select" class="text-sm font-medium text-gray-400">Temporada:</label>
+                                <select id="vod-season-select"
+                                    class="bg-gray-700 hover:bg-gray-650 border border-gray-600 rounded-lg px-3 py-2 text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer">
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Episodes List -->
+                        <div id="vod-episode-list" class="space-y-2">
+                            <!-- Injected dynamically with .episode-item -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Dashboard Page: Canales Favoritos, Continuar Viendo y Resumen de Series -->
             <div id="page-dashboard" class="hidden flex-grow flex-col items-center p-4 overflow-y-auto custom-scrollbar">
                 <div class="w-full max-w-6xl xl:max-w-screen-xl mx-auto space-y-6 pb-16">
@@ -2983,69 +3073,7 @@
         </div>
     </div>
 
-    <div id="vod-details-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-        <div id="vod-details-container" class="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl flex flex-col relative"
-            style="max-height: 90vh;">
-            <button id="vod-details-close-btn"
-                class="absolute top-3 right-3 p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-700 transition-colors z-20">
-                <span data-icon="close" class="w-6 h-6"></span>
-            </button>
-
-            <div id="vod-details-backdrop" class="absolute inset-0 w-full h-full overflow-hidden rounded-lg">
-                <img id="vod-details-backdrop-img" src="" class="w-full h-full object-cover object-center opacity-20"
-                    style="filter: blur(10px);">
-                <div class="absolute inset-0 bg-gradient-to-t from-gray-800 via-gray-800/80 to-transparent"></div>
-            </div>
-
-            <div id="vod-details-content" class="relative flex-grow flex flex-col overflow-y-auto custom-scrollbar">
-                <div class="p-6 md:p-8 flex flex-col md:flex-row gap-6">
-                    <img id="vod-details-poster" src=""
-                        class="w-48 h-72 object-cover rounded-md shadow-lg flex-shrink-0 bg-gray-700">
-                    <div class="flex-grow pt-4">
-                        <h2 id="vod-details-title" class="text-3xl font-bold text-white mb-2"></h2>
-                        <div id="vod-details-meta"
-                            class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-400 mb-4">
-                            <span id="vod-details-year"></span>
-                            <span id="vod-details-rating" class="font-bold text-yellow-400"></span>
-                            <span id="vod-details-type" class="font-semibold text-purple-400"></span>
-                            <span id="vod-details-duration"></span>
-                        </div>
-                        <p class="text-sm mb-2"><strong class="text-gray-300">Genre:</strong> <span
-                                id="vod-details-genre"></span></p>
-                        <p class="text-sm mb-2"><strong class="text-gray-300">Director:</strong> <span
-                                id="vod-details-director"></span></p>
-                        <p class="text-sm mb-4"><strong class="text-gray-300">Cast:</strong> <span
-                                id="vod-details-cast"></span></p>
-                        <p id="vod-details-desc" class="text-base text-gray-300 mb-6"></p>
-
-                        <div id="vod-details-movie-actions" class="hidden">
-                            <button id="vod-play-movie-btn"
-                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md text-lg flex items-center gap-2">
-                                <span data-icon="play"></span> Play Movie
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="vod-details-series-actions" class="hidden px-6 md:px-8 pb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xl font-bold text-white">Episodes</h3>
-                        <div class="flex-shrink-0">
-                            <label for="vod-season-select" class="sr-only">Select Season</label>
-                            <select id="vod-season-select"
-                                class="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:ring-blue-500 focus:border-blue-500"></select>
-                        </div>
-                    </div>
-                    <div id="vod-episode-list"
-                        class="max-h-60 overflow-y-auto custom-scrollbar bg-gray-900/50 rounded-md border border-gray-700">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <script type="module" src="/js/main.js?v=12"></script>
+    <script type="module" src="/js/main.js?v=13"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">

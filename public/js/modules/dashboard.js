@@ -10,6 +10,7 @@ import { apiFetch, fetchConfig } from './api.js';
 import { withBase } from './basePath.js';
 import { playVOD, playChannel } from './player.js';
 import { guideState } from './state.js';
+import { navigate } from './ui.js';
 
 let isDashboardLoading = false;
 
@@ -415,10 +416,18 @@ function createSeriesSummaryCard(series) {
         playVOD(streamUrl, title, series.logo, seekTime, context);
     };
 
-    // Click anywhere on card to play
+    // Click on card: resume button plays directly, clicking card opens series details page
     card.addEventListener('click', (e) => {
         if (e.target.closest('.dismiss-series-btn')) return;
-        playSeriesEpisode();
+        if (e.target.closest('.resume-series-btn')) {
+            playSeriesEpisode();
+            return;
+        }
+        if (series.contentId) {
+            navigate(`/vod/details/${encodeURIComponent(series.contentId)}`);
+        } else {
+            playSeriesEpisode();
+        }
     });
 
     // Dismiss series handler
