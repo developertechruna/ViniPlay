@@ -88,6 +88,7 @@ export const UIElements = {
     userDropdownName: null,
 
     // --- NEW: VOD Page Elements ---
+    tabDashboard: null,
     tabVod: null,
     mobileNavVod: null,
     mobileNavDashboard: null,

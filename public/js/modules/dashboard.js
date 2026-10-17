@@ -68,7 +68,7 @@ async function loadFavoriteChannels() {
     const countBadge = document.getElementById('dashboard-favorites-count');
     if (!grid) return;
 
-    grid.innerHTML = '<div class="col-span-full py-6 text-center text-gray-400">Cargando canales favoritos...</div>';
+    grid.innerHTML = '<div class="col-span-full py-6 text-center text-gray-400">Loading favorite channels...</div>';
 
     try {
         let channels = guideState.channels || [];
@@ -128,7 +128,7 @@ function createFavoriteChannelCard(channel) {
     const logoUrl = rawLogo
         ? (rawLogo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(rawLogo)}`) : rawLogo)
         : 'https://placehold.co/300x450/1f2937/d1d5db?text=LIVE+TV';
-    const channelName = channel.displayName || channel.name || 'Canal';
+    const channelName = channel.displayName || channel.name || 'Channel';
     const groupName = channel.group || 'Live TV';
 
     card.innerHTML = `
@@ -271,11 +271,11 @@ export async function loadFavoriteVODs() {
                 const emptyText = emptyMsg.querySelector('p');
                 if (emptyText) {
                     if (allFavs.length === 0) {
-                        emptyText.textContent = 'No tienes películas ni series favoritas guardadas.';
+                        emptyText.textContent = 'No favorite movies or series saved.';
                     } else if (currentVodFavFilter === 'movie') {
-                        emptyText.textContent = 'No tienes películas favoritas guardadas.';
+                        emptyText.textContent = 'No favorite movies saved.';
                     } else {
-                        emptyText.textContent = 'No tienes series favoritas guardadas.';
+                        emptyText.textContent = 'No favorite series saved.';
                     }
                 }
             }
@@ -307,10 +307,10 @@ function createFavoriteVodCard(item) {
     card.dataset.id = String(item.id);
 
     const isSeries = item.type === 'series';
-    const badgeText = isSeries ? 'Serie' : 'Película';
+    const badgeText = isSeries ? 'Series' : 'Movie';
     const badgeClass = isSeries ? 'bg-purple-600/80 text-white' : 'bg-blue-600/80 text-white';
-    const safeTitle = item.name || (isSeries ? 'Serie' : 'Película');
-    const safeSubtitle = item.group || (item.year ? String(item.year) : (isSeries ? 'Serie' : 'Película'));
+    const safeTitle = item.name || (isSeries ? 'Series' : 'Movie');
+    const safeSubtitle = item.group || (item.year ? String(item.year) : (isSeries ? 'Series' : 'Movie'));
     const placeholderPoster = `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(safeTitle)}`;
     const posterUrl = item.logo
         ? (item.logo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(item.logo)}`) : item.logo)
@@ -320,7 +320,7 @@ function createFavoriteVodCard(item) {
         <span class="vod-type-badge ${badgeClass}">${badgeText}</span>
 
         <!-- Botón Quitar de Favoritos (hover / top-right) -->
-        <button type="button" class="remove-fav-btn absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-black/80 hover:bg-red-600 text-yellow-400 hover:text-white text-xs transition-colors z-20 cursor-pointer" title="Quitar de favoritos">
+        <button type="button" class="remove-fav-btn absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-black/80 hover:bg-red-600 text-yellow-400 hover:text-white text-xs transition-colors z-20 cursor-pointer" title="Remove from favorites">
             ★
         </button>
 
@@ -365,7 +365,7 @@ async function loadContinueWatching() {
     const countBadge = document.getElementById('dashboard-continue-count');
     if (!grid) return;
 
-    grid.innerHTML = '<div class="col-span-full py-8 text-center text-gray-400">Cargando contenido pendiente...</div>';
+    grid.innerHTML = '<div class="col-span-full py-8 text-center text-gray-400">Loading in-progress content...</div>';
 
     try {
         const res = await apiFetch('/api/vod/continue-watching');
@@ -415,16 +415,16 @@ function createContinueCard(item) {
 
     const rawLogo = item.logo || `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(item.title)}`;
     const posterUrl = rawLogo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(rawLogo)}`) : rawLogo;
-    const badgeText = item.contentType === 'movie' ? 'Película' : 'VOD';
+    const badgeText = item.contentType === 'movie' ? 'Movie' : 'VOD';
     const mainTitle = item.title;
     const progressPct = Math.max(2, Math.min(100, Math.round(item.percentage || 0)));
-    const remainingText = item.remainingMinutes ? `${item.remainingMinutes}m restantes` : `${Math.round(item.currentTime / 60)}m vistos`;
+    const remainingText = item.remainingMinutes ? `${item.remainingMinutes}m remaining` : `${Math.round(item.currentTime / 60)}m watched`;
 
     card.innerHTML = `
         <span class="vod-type-badge">${badgeText}</span>
 
         <!-- Botón Descartar (hover) -->
-        <button type="button" class="dismiss-btn absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded bg-black/75 hover:bg-red-600 text-gray-300 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer" title="Descartar">
+        <button type="button" class="dismiss-btn absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded bg-black/75 hover:bg-red-600 text-gray-300 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer" title="Dismiss">
             ✕
         </button>
 
@@ -469,7 +469,7 @@ function createContinueCard(item) {
     if (dismissBtn) {
         dismissBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (!confirm(`¿Eliminar "${mainTitle}" de continuar viendo?`)) return;
+            if (!confirm(`Remove "${mainTitle}" from continue watching?`)) return;
 
             try {
                 await fetch(withBase(`/api/vod/progress/${encodeURIComponent(item.contentId)}`), {
@@ -503,7 +503,7 @@ async function loadSeriesSummary() {
     const countBadge = document.getElementById('dashboard-series-count');
     if (!grid) return;
 
-    grid.innerHTML = '<div class="col-span-full py-6 text-center text-gray-400">Cargando series en curso...</div>';
+    grid.innerHTML = '<div class="col-span-full py-6 text-center text-gray-400">Loading series in progress...</div>';
 
     try {
         const res = await apiFetch('/api/vod/series-summary');
@@ -554,16 +554,16 @@ function createSeriesSummaryCard(series) {
     const posterUrl = rawLogo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(rawLogo)}`) : rawLogo;
 
     const activeEp = series.inProgressEpisode || series.lastWatchedEpisode;
-    const epBadge = activeEp ? `T${activeEp.season_num}:E${activeEp.episode_num}` : 'Episodio';
+    const epBadge = activeEp ? `S${activeEp.season_num}:E${activeEp.episode_num}` : 'Episode';
     const epTitle = activeEp?.episode_title ? ` - ${activeEp.episode_title}` : '';
     const isPaused = activeEp && activeEp.is_completed === 0 && activeEp.current_time > 0;
     const btnLabel = isPaused
-        ? `▶ Continuar ${epBadge} (${Math.round(activeEp.current_time / 60)} min)`
-        : `▶ Reproducir ${epBadge}`;
+        ? `▶ Continue ${epBadge} (${Math.round(activeEp.current_time / 60)} min)`
+        : `▶ Play ${epBadge}`;
 
     card.innerHTML = `
         <!-- Botón Descartar Serie (hover) -->
-        <button type="button" class="dismiss-series-btn absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded bg-black/75 hover:bg-red-600 text-gray-300 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer" title="Descartar serie">
+        <button type="button" class="dismiss-series-btn absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded bg-black/75 hover:bg-red-600 text-gray-300 hover:text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20 cursor-pointer" title="Dismiss series">
             ✕
         </button>
 
@@ -581,7 +581,7 @@ function createSeriesSummaryCard(series) {
                 </h4>
                 <div class="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
                     <span class="text-blue-400 font-semibold">${series.completedEpisodes}/${series.totalEpisodes}</span>
-                    <span>episodios</span>
+                    <span>episodes</span>
                     <span>•</span>
                     <span class="text-gray-300 font-medium">${series.percentCompleted}%</span>
                 </div>
@@ -592,7 +592,7 @@ function createSeriesSummaryCard(series) {
 
                 ${activeEp ? `
                 <div class="mt-2 text-xs text-gray-300 truncate">
-                    <span class="text-gray-400">Último:</span> <span class="font-semibold text-white">${epBadge}</span>${epTitle}
+                    <span class="text-gray-400">Latest:</span> <span class="font-semibold text-white">${epBadge}</span>${epTitle}
                 </div>
                 ` : ''}
             </div>
@@ -647,7 +647,7 @@ function createSeriesSummaryCard(series) {
     if (dismissBtn) {
         dismissBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (!confirm(`¿Eliminar la serie "${series.title}" de series en curso?`)) return;
+            if (!confirm(`Remove series "${series.title}" from series in progress?`)) return;
 
             try {
                 await fetch(withBase(`/api/vod/progress/${encodeURIComponent(series.contentId)}`), {

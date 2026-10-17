@@ -197,8 +197,8 @@ function renderVodGrid() {
             return `
                 <div class="vod-item relative group" data-id="${itemIdStr}">
                     <span class="vod-type-badge">${itemType}</span>
-                    ${isCompleted ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-bold bg-green-600/90 text-white shadow">VISTO</span>' : ''}
-                    <button type="button" class="vod-fav-btn absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center rounded-full ${isFav ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 shadow' : 'bg-gray-950/70 text-gray-400 hover:text-yellow-400 border border-gray-700/60 opacity-80 hover:opacity-100'} transition-all cursor-pointer" data-id="${itemIdStr}" title="${isFav ? 'Quitar de favoritos' : 'Añadir a favoritos'}">
+                    ${isCompleted ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-bold bg-green-600/90 text-white shadow">WATCHED</span>' : ''}
+                    <button type="button" class="vod-fav-btn absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center rounded-full ${isFav ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 shadow' : 'bg-gray-950/70 text-gray-400 hover:text-yellow-400 border border-gray-700/60 opacity-80 hover:opacity-100'} transition-all cursor-pointer" data-id="${itemIdStr}" title="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
                         <span class="text-xs leading-none">${isFav ? '★' : '☆'}</span>
                     </button>
                     <div class="vod-item-poster relative">
@@ -320,7 +320,7 @@ async function renderVodDetails(item) {
         UIElements.pageVodDetails.scrollTop = 0;
     }
 
-    const safeName = item.name || (item.type === 'series' ? 'Serie' : 'Película');
+    const safeName = item.name || (item.type === 'series' ? 'Series' : 'Movie');
     const placeholderPoster = `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(safeName)}`;
     const posterUrl = item.logo || placeholderPoster;
     const proxiedPoster = posterUrl.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(posterUrl)}`) : posterUrl;
@@ -389,7 +389,7 @@ async function renderVodDetails(item) {
         vodState.currentMovie = item;
         vodState.currentSeries = null;
         if (UIElements.vodDetailsType) {
-            UIElements.vodDetailsType.textContent = 'Película';
+            UIElements.vodDetailsType.textContent = 'Movie';
             UIElements.vodDetailsType.className = 'px-3 py-1 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 text-xs';
         }
         if (UIElements.vodDetailsMovieActions) UIElements.vodDetailsMovieActions.classList.remove('hidden');
@@ -400,7 +400,7 @@ async function renderVodDetails(item) {
     } else if (item.type === 'series') {
         vodState.currentMovie = null;
         if (UIElements.vodDetailsType) {
-            UIElements.vodDetailsType.textContent = 'Serie';
+            UIElements.vodDetailsType.textContent = 'Series';
             UIElements.vodDetailsType.className = 'px-3 py-1 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs';
         }
         if (UIElements.vodDetailsSeriesActions) UIElements.vodDetailsSeriesActions.classList.remove('hidden');
@@ -413,7 +413,7 @@ async function renderVodDetails(item) {
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                     </svg>
-                    <span class="text-sm font-medium">Cargando episodios...</span>
+                    <span class="text-sm font-medium">Loading episodes...</span>
                 </div>
             `;
         }
@@ -429,15 +429,15 @@ async function renderVodDetails(item) {
         }
 
         if (!fullSeriesData || !fullSeriesData.seasons || Object.keys(fullSeriesData.seasons).length === 0) {
-            const errorMessage = fullSeriesData ? "No se encontraron episodios para esta serie." : "No se pudieron cargar los episodios de esta serie. El proveedor podría estar fuera de línea.";
+            const errorMessage = fullSeriesData ? "No episodes found for this series." : "Could not load episodes for this series. The provider might be offline.";
             if (UIElements.vodEpisodeList) {
                 UIElements.vodEpisodeList.innerHTML = `<p class="p-8 text-center text-gray-400">${errorMessage}</p>`;
             }
             if (UIElements.vodSeasonSelect) {
-                UIElements.vodSeasonSelect.innerHTML = '<option disabled selected>Sin Temporadas</option>';
+                UIElements.vodSeasonSelect.innerHTML = '<option disabled selected>No Seasons</option>';
             }
             if (UIElements.vodEpisodesCountBadge) {
-                UIElements.vodEpisodesCountBadge.textContent = '0 episodios';
+                UIElements.vodEpisodesCountBadge.textContent = '0 episodes';
             }
             return;
         }
@@ -452,7 +452,7 @@ async function renderVodDetails(item) {
                 totalEps += fullSeriesData.seasons[sNum]?.length || 0;
             }
             if (UIElements.vodEpisodesCountBadge) {
-                UIElements.vodEpisodesCountBadge.textContent = `${totalEps} episodios`;
+                UIElements.vodEpisodesCountBadge.textContent = `${totalEps} episodes`;
             }
 
             if (sortedSeasonKeys.length > 0) {
@@ -460,7 +460,7 @@ async function renderVodDetails(item) {
                     const option = document.createElement('option');
                     option.value = seasonNum;
                     const epCount = fullSeriesData.seasons[seasonNum]?.length || 0;
-                    option.textContent = `Temporada ${seasonNum} (${epCount} ep.)`;
+                    option.textContent = `Season ${seasonNum} (${epCount} ep.)`;
                     seasonSelect.appendChild(option);
                 }
 
@@ -470,8 +470,8 @@ async function renderVodDetails(item) {
                     renderEpisodeList(fullSeriesData, parseInt(e.target.value, 10));
                 };
             } else {
-                UIElements.vodEpisodeList.innerHTML = `<p class="p-8 text-center text-gray-400">No se encontraron episodios para esta serie.</p>`;
-                seasonSelect.innerHTML = '<option disabled selected>Sin Temporadas</option>';
+                UIElements.vodEpisodeList.innerHTML = `<p class="p-8 text-center text-gray-400">No episodes found for this series.</p>`;
+                seasonSelect.innerHTML = '<option disabled selected>No Seasons</option>';
             }
         }
     }
@@ -512,11 +512,11 @@ function updateMovieProgressUI(item) {
 
     if (UIElements.vodPlayMovieBtnText) {
         if (hasResume) {
-            UIElements.vodPlayMovieBtnText.textContent = `Reanudar en ${formatDurationDisplay(movieProg.currentTime)}`;
+            UIElements.vodPlayMovieBtnText.textContent = `Resume at ${formatDurationDisplay(movieProg.currentTime)}`;
         } else if (isWatched) {
-            UIElements.vodPlayMovieBtnText.textContent = 'Volver a ver';
+            UIElements.vodPlayMovieBtnText.textContent = 'Watch Again';
         } else {
-            UIElements.vodPlayMovieBtnText.textContent = 'Reproducir Película';
+            UIElements.vodPlayMovieBtnText.textContent = 'Play Movie';
         }
     }
 
@@ -635,14 +635,14 @@ function renderEpisodeList(series, seasonNum) {
     console.log(`[VOD] Rendering episodes for Series ID ${series.id}, Season ${seasonNum}:`, episodes);
 
     if (!episodes || episodes.length === 0) {
-        episodeListEl.innerHTML = `<p class="p-8 text-center text-gray-400">No hay episodios disponibles para esta temporada.</p>`;
+        episodeListEl.innerHTML = `<p class="p-8 text-center text-gray-400">No episodes available for this season.</p>`;
         return;
     }
 
     episodeListEl.innerHTML = episodes.map((ep, index) => {
         let epName = ep.name.includes(' - ') ? ep.name.split(' - ').pop() : ep.name;
         if (epName.length < 5) epName = ep.name;
-        const originalTitle = ep.name || `Episodio ${index + 1}`;
+        const originalTitle = ep.name || `Episode ${index + 1}`;
         const epNum = ep.episode || (index + 1);
         const epId = ep.id ? String(ep.id) : '';
 
@@ -674,19 +674,19 @@ function renderEpisodeList(series, seasonNum) {
                                 <h4 class="text-white text-sm sm:text-base font-semibold truncate group-hover:text-blue-300 transition-colors" title="${epName.replace(/"/g, '&quot;')}">
                                     ${epName}
                                 </h4>
-                                ${isWatched ? '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-500/20 text-green-400 border border-green-500/30 flex-shrink-0">Visto</span>' : ''}
+                                ${isWatched ? '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-500/20 text-green-400 border border-green-500/30 flex-shrink-0">Watched</span>' : ''}
                             </div>
                             <div class="flex items-center gap-2 sm:gap-3 text-xs text-gray-400 mt-0.5">
-                                <span class="text-purple-400 font-medium">T${seasonNum}:E${epNum}</span>
+                                <span class="text-purple-400 font-medium">S${seasonNum}:E${epNum}</span>
                                 ${durationSecs ? `<span>•</span><span>${formatDurationDisplay(durationSecs)}</span>` : ''}
-                                ${hasResume ? `<span>•</span><span class="text-blue-400 font-semibold font-mono">Reanudar en ${formatDurationDisplay(resumeTime)} (${Math.round(prog.percentage)}%)</span>` : ''}
+                                ${hasResume ? `<span>•</span><span class="text-blue-400 font-semibold font-mono">Resume at ${formatDurationDisplay(resumeTime)} (${Math.round(prog.percentage)}%)</span>` : ''}
                                 ${ep.air_date ? `<span>•</span><span>${ep.air_date}</span>` : ''}
                             </div>
                         </div>
                     </div>
 
                     <div class="flex items-center gap-2 flex-shrink-0">
-                        <button type="button" class="episode-item-play-btn w-9 h-9 sm:w-10 sm:h-10 rounded-full ${isWatched ? 'bg-green-600/20 text-green-400 group-hover:bg-green-600' : 'bg-blue-600/20 text-blue-400 group-hover:bg-blue-600'} group-hover:text-white flex items-center justify-center transition-all duration-200 shadow group-hover:scale-105" title="${hasResume ? `Reanudar en ${formatDurationDisplay(resumeTime)}` : 'Reproducir episodio'}">
+                        <button type="button" class="episode-item-play-btn w-9 h-9 sm:w-10 sm:h-10 rounded-full ${isWatched ? 'bg-green-600/20 text-green-400 group-hover:bg-green-600' : 'bg-blue-600/20 text-blue-400 group-hover:bg-blue-600'} group-hover:text-white flex items-center justify-center transition-all duration-200 shadow group-hover:scale-105" title="${hasResume ? `Resume at ${formatDurationDisplay(resumeTime)}` : 'Play episode'}">
                             <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8.118v3.764a1 1 0 001.555.832l3.197-1.882a1 1 0 000-1.664l-3.197-1.882z" clip-rule="evenodd" />
                             </svg>
@@ -705,10 +705,10 @@ function renderEpisodeList(series, seasonNum) {
 }
 
 function showVodDetailsSkeleton() {
-    if (UIElements.vodDetailsTitle) UIElements.vodDetailsTitle.textContent = 'Cargando...';
-    if (UIElements.vodDetailsDesc) UIElements.vodDetailsDesc.textContent = 'Cargando información del catálogo VOD...';
+    if (UIElements.vodDetailsTitle) UIElements.vodDetailsTitle.textContent = 'Loading...';
+    if (UIElements.vodDetailsDesc) UIElements.vodDetailsDesc.textContent = 'Loading VOD catalog info...';
     if (UIElements.vodDetailsPoster) {
-        UIElements.vodDetailsPoster.src = 'https://placehold.co/400x600/1f2937/374151?text=Cargando...';
+        UIElements.vodDetailsPoster.src = 'https://placehold.co/400x600/1f2937/374151?text=Loading...';
     }
     if (UIElements.vodDetailsMovieActions) UIElements.vodDetailsMovieActions.classList.add('hidden');
     if (UIElements.vodDetailsSeriesActions) UIElements.vodDetailsSeriesActions.classList.add('hidden');
@@ -716,12 +716,12 @@ function showVodDetailsSkeleton() {
 }
 
 function showVodItemNotFound(itemId) {
-    if (UIElements.vodDetailsTitle) UIElements.vodDetailsTitle.textContent = 'Contenido no encontrado';
+    if (UIElements.vodDetailsTitle) UIElements.vodDetailsTitle.textContent = 'Content not found';
     if (UIElements.vodDetailsDesc) {
-        UIElements.vodDetailsDesc.textContent = `No se pudo encontrar ningún título con ID "${itemId}" en la biblioteca VOD.`;
+        UIElements.vodDetailsDesc.textContent = `Could not find any title with ID "${itemId}" in the VOD library.`;
     }
     if (UIElements.vodDetailsPoster) {
-        UIElements.vodDetailsPoster.src = 'https://placehold.co/400x600/1f2937/d1d5db?text=No+Encontrado';
+        UIElements.vodDetailsPoster.src = 'https://placehold.co/400x600/1f2937/d1d5db?text=Not+Found';
     }
     if (UIElements.vodDetailsMovieActions) UIElements.vodDetailsMovieActions.classList.add('hidden');
     if (UIElements.vodDetailsSeriesActions) UIElements.vodDetailsSeriesActions.classList.add('hidden');
@@ -860,7 +860,7 @@ function setupVodEventListeners() {
         // Update cards in VOD grid if visible
         const favBtns = document.querySelectorAll(`.vod-fav-btn[data-id="${itemId}"]`);
         favBtns.forEach(btn => {
-            btn.title = isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos';
+            btn.title = isFavorite ? 'Remove from favorites' : 'Add to favorites';
             btn.className = `vod-fav-btn absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center rounded-full ${isFavorite ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 shadow' : 'bg-gray-950/70 text-gray-400 hover:text-yellow-400 border border-gray-700/60 opacity-80 hover:opacity-100'} transition-all cursor-pointer`;
             btn.innerHTML = `<span class="text-xs leading-none">${isFavorite ? '★' : '☆'}</span>`;
         });
@@ -1031,7 +1031,7 @@ export async function toggleVodFavorite(item) {
     if (index !== -1) {
         favs.splice(index, 1);
         isNowFavorite = false;
-        showNotification(`Eliminado de favoritos: "${item.name || 'Contenido'}"`, false, 2000);
+        showNotification(`Removed from favorites: "${item.name || 'Content'}"`, false, 2000);
     } else {
         const itemType = item.type || (item.seasons ? 'series' : 'movie');
         favs.unshift({
@@ -1046,7 +1046,7 @@ export async function toggleVodFavorite(item) {
             addedAt: Date.now()
         });
         isNowFavorite = true;
-        showNotification(`Añadido a favoritos: "${item.name || 'Contenido'}"`, false, 2000);
+        showNotification(`Added to favorites: "${item.name || 'Content'}"`, false, 2000);
     }
 
     guideState.settings.vodFavorites = favs;
@@ -1077,15 +1077,15 @@ export function updateVodFavoriteButton(item) {
     }
 
     if (UIElements.vodDetailsFavoriteText) {
-        UIElements.vodDetailsFavoriteText.textContent = isFav ? 'Favorito' : 'Marcar como Favorito';
+        UIElements.vodDetailsFavoriteText.textContent = isFav ? 'Favorite' : 'Add to Favorites';
     }
 
     if (isFav) {
         UIElements.vodDetailsFavoriteBtn.className = 'inline-flex items-center gap-2 py-3.5 px-6 rounded-xl border border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-semibold transition-all duration-200 cursor-pointer text-sm shadow-md';
-        UIElements.vodDetailsFavoriteBtn.title = 'Quitar de favoritos';
+        UIElements.vodDetailsFavoriteBtn.title = 'Remove from favorites';
     } else {
         UIElements.vodDetailsFavoriteBtn.className = 'inline-flex items-center gap-2 py-3.5 px-6 rounded-xl border border-gray-700 bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white font-semibold transition-all duration-200 cursor-pointer text-sm shadow-md';
-        UIElements.vodDetailsFavoriteBtn.title = 'Marcar como favorito';
+        UIElements.vodDetailsFavoriteBtn.title = 'Add to favorites';
     }
 }
 

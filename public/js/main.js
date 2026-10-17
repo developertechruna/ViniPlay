@@ -431,6 +431,7 @@ function setupCoreEventListeners() {
     };
 
     // Desktop Tabs
+    setupTabListener(UIElements.tabDashboard, 'dashboard');
     setupTabListener(UIElements.tabGuide, 'guide');
     setupTabListener(UIElements.tabMultiview, 'multiview', initMultiView);
     setupTabListener(UIElements.tabPlayer, 'player', initDirectPlayer);

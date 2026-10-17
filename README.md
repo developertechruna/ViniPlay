@@ -95,14 +95,15 @@ This branch introduces several core improvements designed for reverse proxy envi
 
 ### 5. Advanced Player Controls & Next Episode Flow
 - **Current Elapsed Time**: Real-time counter on the player header displaying exact stream time and total duration.
-- **Next Episode Button**: In series playback, a dedicated "Siguiente capítulo" button appears in the player header and on-screen overlay whenever a consecutive episode exists.
+- **Next Episode Button**: In series playback, a dedicated "Next Episode" button appears in the player header and on-screen overlay whenever a consecutive episode exists.
 - **Automatic Progress Sync**: Regular background synchronization with the server keeps progress accurate across sessions and devices.
 
 ### 6. Quick Dashboard Navigation & Unified User Menu
+- **First Navigation Item**: "Dashboard" is positioned at the start of both desktop and mobile navigation menus for immediate access.
 - **Brand Logo Navigation**: Clicking the "VINI PLAY" logo/text navigates directly to the Dashboard (`/dashboard`).
 - **Unified User Dropdown Component**:
   - Compact profile pill button displaying an avatar badge with the user's initial and username.
-  - Smooth dropdown menu with account indicator ("Conectado como <user>"), shortcut to "Mi Dashboard", and distinct "Cerrar Sesión" (`Logout`) action.
+  - Smooth dropdown menu with account indicator ("Signed in as <user>"), shortcut to "Dashboard", and distinct "Logout" action.
   - Accessible keyboard navigation (Enter, Space, Escape) and automatic dismissal when clicking outside.
 
 ### 7. Responsive & Adaptive UI Design

@@ -1348,13 +1348,15 @@
                     role="button"
                     tabindex="0"
                     class="flex items-center gap-2.5 cursor-pointer select-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg p-1 -m-1"
-                    title="Ir al Dashboard">
+                    title="Go to Dashboard">
                     <img src="/viniplay.png" alt="VINI PLAY Logo" class="h-8 w-8 group-hover:scale-105 transition-transform duration-200">
                     <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-blue-400 transition-colors">VINI PLAY</h1>
                 </div>
             </div>
             <div class="flex items-center gap-4">
                 <div class="hidden lg:flex gap-2">
+                    <button id="tab-dashboard"
+                        class="tab-button text-sm sm:text-base font-medium py-2 px-4 text-gray-300 hover:bg-gray-700 rounded-md transition-colors">Dashboard</button>
                     <button id="tab-guide"
                         class="tab-button text-sm sm:text-base font-medium py-2 px-4 text-gray-300 hover:bg-gray-700 active rounded-md transition-colors">TV
                         Guide</button>
@@ -1378,7 +1380,7 @@
                 <div id="user-menu-container" class="relative">
                     <button id="user-display" type="button"
                         class="flex items-center gap-2.5 py-1.5 px-3 rounded-xl bg-gray-700/80 hover:bg-gray-700 border border-gray-600/60 text-white font-medium text-sm transition-all duration-200 cursor-pointer shadow-sm hover:shadow"
-                        aria-expanded="false" aria-haspopup="true" title="Menú de usuario">
+                        aria-expanded="false" aria-haspopup="true" title="User menu">
                         <div class="w-7 h-7 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold text-xs uppercase">
                             <span id="user-avatar-initial">U</span>
                         </div>
@@ -1392,7 +1394,7 @@
                     <div id="user-dropdown-menu"
                         class="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl py-1.5 z-50">
                         <div class="px-3.5 py-2 border-b border-gray-700/60">
-                            <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Conectado como</p>
+                            <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Signed in as</p>
                             <p id="user-dropdown-name" class="text-sm font-bold text-white truncate"></p>
                         </div>
                         <div class="p-1 space-y-0.5">
@@ -1735,7 +1737,7 @@
                             class="vod-type-btn tab-button text-xs sm:text-sm font-medium py-1.5 px-3 sm:px-4 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors whitespace-nowrap">Series</button>
                         <button id="vod-type-favorites"
                             class="vod-type-btn tab-button text-xs sm:text-sm font-medium py-1.5 px-3 sm:px-4 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                            <span class="text-yellow-400">★</span> Favoritos
+                            <span class="text-yellow-400">★</span> Favorites
                         </button>
                     </div>
                     <div
@@ -1830,18 +1832,18 @@
                                     <button id="vod-play-movie-btn" type="button"
                                         class="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 transition-all duration-200 transform hover:scale-102 cursor-pointer text-base sm:text-lg">
                                         <span data-icon="play" class="w-6 h-6"></span>
-                                        <span id="vod-play-movie-btn-text">Reproducir Película</span>
+                                        <span id="vod-play-movie-btn-text">Play Movie</span>
                                     </button>
                                     <button id="vod-restart-movie-btn" type="button"
                                         class="hidden inline-flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white font-semibold py-3.5 px-6 rounded-xl border border-gray-700 transition-all duration-200 cursor-pointer text-sm">
                                         <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
-                                        <span>Desde el inicio</span>
+                                        <span>From beginning</span>
                                     </button>
                                 </div>
                                 <button id="vod-details-favorite-btn" type="button"
                                     class="inline-flex items-center gap-2 py-3.5 px-6 rounded-xl border border-gray-700 bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white font-semibold transition-all duration-200 cursor-pointer text-sm shadow-md">
                                     <span id="vod-details-favorite-icon" class="text-base text-gray-400 leading-none">★</span>
-                                    <span id="vod-details-favorite-text">Marcar como Favorito</span>
+                                    <span id="vod-details-favorite-text">Add to Favorites</span>
                                 </button>
                             </div>
 
@@ -1850,9 +1852,9 @@
 
                             <!-- Cast & Director -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-gray-400 max-w-3xl pt-3 border-t border-gray-800">
-                                <div><strong class="text-gray-400 font-semibold">Género:</strong> <span id="vod-details-genre" class="text-gray-200"></span></div>
+                                <div><strong class="text-gray-400 font-semibold">Genre:</strong> <span id="vod-details-genre" class="text-gray-200"></span></div>
                                 <div><strong class="text-gray-400 font-semibold">Director:</strong> <span id="vod-details-director" class="text-gray-200"></span></div>
-                                <div class="sm:col-span-2"><strong class="text-gray-400 font-semibold">Reparto:</strong> <span id="vod-details-cast" class="text-gray-200"></span></div>
+                                <div class="sm:col-span-2"><strong class="text-gray-400 font-semibold">Cast:</strong> <span id="vod-details-cast" class="text-gray-200"></span></div>
                             </div>
                         </div>
                     </div>
@@ -1865,11 +1867,11 @@
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-700/50">
                             <div class="flex items-center gap-3">
                                 <span data-icon="tv" class="w-6 h-6 text-purple-400"></span>
-                                <h2 class="text-xl sm:text-2xl font-bold text-white">Episodios</h2>
+                                <h2 class="text-xl sm:text-2xl font-bold text-white">Episodes</h2>
                                 <span id="vod-episodes-count-badge" class="px-2.5 py-0.5 text-xs font-semibold bg-gray-700 text-gray-300 rounded-full"></span>
                             </div>
                             <div class="flex items-center gap-2">
-                                <label for="vod-season-select" class="text-sm font-medium text-gray-400">Temporada:</label>
+                                <label for="vod-season-select" class="text-sm font-medium text-gray-400">Season:</label>
                                 <select id="vod-season-select"
                                     class="bg-gray-700 hover:bg-gray-650 border border-gray-600 rounded-lg px-3 py-2 text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer">
                                 </select>
@@ -1884,47 +1886,47 @@
                 </div>
             </div>
 
-            <!-- Dashboard Page: Canales Favoritos, Continuar Viendo y Resumen de Series -->
+            <!-- Dashboard Page: Favorite Channels, Continue Watching and Series Summary -->
             <div id="page-dashboard" class="hidden flex-grow flex-col items-center p-4 overflow-y-auto custom-scrollbar">
                 <div class="w-full max-w-6xl xl:max-w-screen-xl mx-auto space-y-6 pb-16">
-                    <!-- Section 1: Canales Favoritos -->
+                    <!-- Section 1: Favorite Channels -->
                     <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg">
                         <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
                             <div class="flex items-center gap-3">
                                 <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                                    <span class="text-yellow-400">★</span> Canales Favoritos
+                                    <span class="text-yellow-400">★</span> Favorite Channels
                                 </h2>
                                 <span id="dashboard-favorites-count" class="hidden text-xs bg-gray-700 text-gray-300 font-medium px-2 py-0.5 rounded-md"></span>
                             </div>
                             <button id="dashboard-refresh-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-md text-sm transition-colors flex items-center gap-1.5 cursor-pointer">
-                                <span data-icon="refresh"></span> Actualizar
+                                <span data-icon="refresh"></span> Refresh
                             </button>
                         </div>
                         <div id="dashboard-favorites-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 md:gap-6">
                             <!-- Injected dynamically with favorite channel cards -->
                         </div>
                         <div id="dashboard-favorites-empty" class="hidden text-center text-gray-500 py-8">
-                            <p class="text-sm font-medium">No tienes canales favoritos guardados.</p>
-                            <p class="text-xs text-gray-500 mt-1">Marca canales con la estrella (★) en la Guía de TV para acceder rápidamente a ellos desde aquí.</p>
+                            <p class="text-sm font-medium">No favorite channels saved.</p>
+                            <p class="text-xs text-gray-500 mt-1">Star channels (★) in the TV Guide to quickly access them here.</p>
                         </div>
                     </div>
 
-                    <!-- Section 2: Películas y Series Favoritas -->
+                    <!-- Section 2: Favorite Movies & Series -->
                     <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg">
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-gray-700 pb-3">
                             <div class="flex items-center gap-3">
                                 <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                                    <span class="text-yellow-400">★</span> Películas y Series Favoritas
+                                    <span class="text-yellow-400">★</span> Favorite Movies & Series
                                 </h2>
                                 <span id="dashboard-vod-favorites-count" class="hidden text-xs bg-gray-700 text-gray-300 font-medium px-2 py-0.5 rounded-md"></span>
                             </div>
-                            <!-- Filter Tabs: Todos, Películas, Series -->
+                            <!-- Filter Tabs: All, Movies, Series -->
                             <div class="flex items-center gap-1.5 bg-gray-900/60 p-1 rounded-lg border border-gray-700/50 text-xs">
                                 <button type="button" id="dashboard-vod-fav-filter-all" class="px-3 py-1 rounded-md font-medium transition-colors bg-blue-600 text-white cursor-pointer">
-                                    Todos <span id="dashboard-vod-fav-all-count" class="opacity-80"></span>
+                                    All <span id="dashboard-vod-fav-all-count" class="opacity-80"></span>
                                 </button>
                                 <button type="button" id="dashboard-vod-fav-filter-movies" class="px-3 py-1 rounded-md font-medium transition-colors text-gray-400 hover:text-white cursor-pointer">
-                                    Películas <span id="dashboard-vod-fav-movies-count" class="opacity-80"></span>
+                                    Movies <span id="dashboard-vod-fav-movies-count" class="opacity-80"></span>
                                 </button>
                                 <button type="button" id="dashboard-vod-fav-filter-series" class="px-3 py-1 rounded-md font-medium transition-colors text-gray-400 hover:text-white cursor-pointer">
                                     Series <span id="dashboard-vod-fav-series-count" class="opacity-80"></span>
@@ -1935,16 +1937,16 @@
                             <!-- Injected dynamically with favorite VOD cards -->
                         </div>
                         <div id="dashboard-vod-favorites-empty" class="hidden text-center text-gray-500 py-8">
-                            <p class="text-sm font-medium">No tienes películas ni series favoritas guardadas.</p>
-                            <p class="text-xs text-gray-500 mt-1">Marca contenido con la estrella (★) en VOD para acceder rápidamente desde aquí.</p>
+                            <p class="text-sm font-medium">No favorite movies or series saved.</p>
+                            <p class="text-xs text-gray-500 mt-1">Star content (★) in VOD to quickly access it here.</p>
                         </div>
                     </div>
 
-                    <!-- Section 2: Continuar Viendo -->
+                    <!-- Section 3: Continue Watching -->
                     <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg">
                         <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
                             <div class="flex items-center gap-3">
-                                <h2 class="text-xl font-bold text-white">Continuar Viendo</h2>
+                                <h2 class="text-xl font-bold text-white">Continue Watching</h2>
                                 <span id="dashboard-continue-count" class="hidden text-xs bg-gray-700 text-gray-300 font-medium px-2 py-0.5 rounded-md"></span>
                             </div>
                         </div>
@@ -1952,16 +1954,16 @@
                             <!-- Injected dynamically with .vod-item -->
                         </div>
                         <div id="dashboard-continue-empty" class="hidden text-center text-gray-500 py-8">
-                            <p class="text-sm font-medium">No tienes contenido en curso.</p>
-                            <p class="text-xs text-gray-500 mt-1">Las películas y episodios en VOD que reproduzcas aparecerán aquí para retomarlos.</p>
+                            <p class="text-sm font-medium">No content in progress.</p>
+                            <p class="text-xs text-gray-500 mt-1">VOD movies and episodes you play will appear here to resume.</p>
                         </div>
                     </div>
 
-                    <!-- Section 3: Series en Curso -->
+                    <!-- Section 4: Series in Progress -->
                     <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg">
                         <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-3">
                             <div class="flex items-center gap-3">
-                                <h2 class="text-xl font-bold text-white">Series en Curso</h2>
+                                <h2 class="text-xl font-bold text-white">Series in Progress</h2>
                                 <span id="dashboard-series-count" class="hidden text-xs bg-gray-700 text-gray-300 font-medium px-2 py-0.5 rounded-md"></span>
                             </div>
                         </div>
@@ -1969,8 +1971,8 @@
                             <!-- Injected dynamically -->
                         </div>
                         <div id="dashboard-series-empty" class="hidden text-center text-gray-500 py-8">
-                            <p class="text-sm font-medium">No has iniciado ninguna serie.</p>
-                            <p class="text-xs text-gray-500 mt-1">Tu progreso de episodios y temporadas vistas se resumirá aquí.</p>
+                            <p class="text-sm font-medium">You haven't started any series.</p>
+                            <p class="text-xs text-gray-500 mt-1">Your watched episode and season progress will be summarized here.</p>
                         </div>
                     </div>
                 </div>
@@ -2621,6 +2623,10 @@
                 class="text-gray-400 hover:text-white text-3xl leading-none font-bold cursor-pointer">&times;</button>
         </div>
         <nav class="flex flex-col gap-3">
+            <button id="mobile-nav-dashboard" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="dashboard"></span> Dashboard</span>
+            </button>
             <button id="mobile-nav-guide" type="button"
                 class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
                 <span class="flex items-center gap-2.5"><span data-icon="guide"></span> TV Guide</span>
@@ -2636,10 +2642,6 @@
             <button id="mobile-nav-dvr" type="button"
                 class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
                 <span class="flex items-center gap-2.5"><span data-icon="dvr"></span> DVR</span>
-            </button>
-            <button id="mobile-nav-dashboard" type="button"
-                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
-                <span class="flex items-center gap-2.5"><span data-icon="dashboard"></span> Mi Dashboard</span>
             </button>
             <button id="mobile-nav-vod" type="button"
                 class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
@@ -2677,11 +2679,11 @@
                     <span id="player-header-time" class="hidden text-xs font-mono font-medium text-blue-400 bg-gray-800/90 px-2.5 py-0.5 rounded-full border border-gray-700/60 flex-shrink-0"></span>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <!-- Siguiente Capítulo Button in Modal Header -->
+                    <!-- Next Episode Button in Modal Header -->
                     <button id="player-next-ep-btn"
                         class="hidden text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-md font-semibold text-xs flex items-center gap-1.5 shadow transition-all duration-200 hover:scale-105"
-                        title="Reproducir siguiente capítulo">
-                        <span>Sig. Cap.</span>
+                        title="Play next episode">
+                        <span>Next Ep.</span>
                         <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M4.555 5.168A1 1 0 003 6.07v7.86a1 1 0 001.555.902l6-3.93a1 1 0 000-1.804l-6-3.93zM12 6a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1z"/>
                         </svg>
@@ -2744,7 +2746,7 @@
                 <!-- Floating Next Episode Overlay Button -->
                 <button id="player-next-ep-overlay-btn"
                     class="hidden absolute bottom-16 right-4 z-30 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow-2xl flex items-center gap-2 backdrop-blur-md border border-white/20 transition-all duration-200 hover:scale-105 cursor-pointer">
-                    <span id="player-next-ep-overlay-text">Siguiente capítulo</span>
+                    <span id="player-next-ep-overlay-text">Next Episode</span>
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M4.555 5.168A1 1 0 003 6.07v7.86a1 1 0 001.555.902l6-3.93a1 1 0 000-1.804l-6-3.93zM12 6a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1z"/>
                     </svg>
@@ -3269,7 +3271,7 @@
         </div>
     </div>
 
-    <script type="module" src="/js/main.js?v=21"></script>
+    <script type="module" src="/js/main.js?v=22"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">

@@ -1149,7 +1149,7 @@ export function setNextEpisode(nextEp, onNextCallback = null) {
     if (headerBtn) {
         headerBtn.classList.toggle('hidden', !show);
         if (show) {
-            headerBtn.title = `Siguiente: ${nextEp.name || nextEp.title || 'Siguiente capítulo'}`;
+            headerBtn.title = `Next: ${nextEp.name || nextEp.title || 'Next episode'}`;
             headerBtn.onclick = (e) => {
                 e.stopPropagation();
                 if (autoNextEpisodeTimeout) clearTimeout(autoNextEpisodeTimeout);
@@ -1164,9 +1164,9 @@ export function setNextEpisode(nextEp, onNextCallback = null) {
             overlayBtn.style.opacity = '1';
             overlayBtn.style.pointerEvents = 'auto';
             if (overlayText) {
-                const epTitle = nextEp.name || nextEp.title || 'Capítulo';
+                const epTitle = nextEp.name || nextEp.title || 'Episode';
                 const cleanName = epTitle.includes(' - ') ? epTitle.split(' - ').pop() : epTitle;
-                overlayText.textContent = `Siguiente: ${cleanName}`;
+                overlayText.textContent = `Next: ${cleanName}`;
             }
             overlayBtn.onclick = (e) => {
                 e.stopPropagation();

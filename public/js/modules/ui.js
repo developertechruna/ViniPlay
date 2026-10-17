@@ -483,6 +483,7 @@ async function proceedWithRouteChange(path) {
     if (UIElements.tabVod) UIElements.tabVod.classList.toggle('active', isVod || isVodDetails);
     if (UIElements.mobileNavVod) UIElements.mobileNavVod.classList.toggle('active', isVod || isVodDetails);
     // Dashboard active state
+    UIElements.tabDashboard?.classList.toggle('active', isDashboard);
     const brandTitle = UIElements.brandLogoBtn?.querySelector('h1') || document.querySelector('#brand-logo-btn h1');
     if (brandTitle) {
         brandTitle.classList.toggle('text-blue-400', isDashboard);
