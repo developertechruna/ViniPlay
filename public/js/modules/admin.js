@@ -287,7 +287,7 @@ function renderPaginationControls() {
     
     if (startPage > 1) {
         pagesHTML += `<li><button class="pagination-btn" data-page="1">1</button></li>`;
-        if (startPage > 2) pagesHTML += `<li><span class="pagination-btn">...</span></li>`;
+        if (startPage > 2) pagesHTML += `<li><span class="pagination-btn pagination-ellipsis">...</span></li>`;
     }
 
     for (let i = startPage; i <= endPage; i++) {
@@ -295,7 +295,7 @@ function renderPaginationControls() {
     }
 
     if (endPage < totalPages) {
-        if (endPage < totalPages - 1) pagesHTML += `<li><span class="pagination-btn">...</span></li>`;
+        if (endPage < totalPages - 1) pagesHTML += `<li><span class="pagination-btn pagination-ellipsis">...</span></li>`;
         pagesHTML += `<li><button class="pagination-btn" data-page="${totalPages}">${totalPages}</button></li>`;
     }
 

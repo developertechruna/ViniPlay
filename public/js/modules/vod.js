@@ -900,42 +900,51 @@ function renderVodPaginationControls() {
     // Previous button
     pagesHTML += `<li><button class="pagination-btn prev-page-btn" ${currentPage === 1 ? 'disabled' : ''}>Prev</button></li>`;
 
-    // Page number buttons (simplified for now: first, current, last)
-    pagesHTML += `<li><button class="pagination-btn page-number-btn ${1 === currentPage ? 'active' : ''}" data-page="1">1</button></li>`;
+    // Adaptive page number display: show first, range around current, ellipsis, last
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
-    if (currentPage > 2) {
-        pagesHTML += `<li><span class="pagination-btn">...</span></li>`;
-    }
-    if (currentPage !== 1 && currentPage !== totalPages) {
-        pagesHTML += `<li><button class="pagination-btn page-number-btn active" data-page="${currentPage}">${currentPage}</button></li>`;
-    }
-    if (currentPage < totalPages - 1) {
-        pagesHTML += `<li><span class="pagination-btn">...</span></li>`;
+    if (endPage - startPage + 1 < maxPagesToShow) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
 
-    if (totalPages > 1) {
-        pagesHTML += `<li><button class="pagination-btn page-number-btn ${totalPages === currentPage ? 'active' : ''}" data-page="${totalPages}">${totalPages}</button></li>`;
+    if (startPage > 1) {
+        pagesHTML += `<li><button class="pagination-btn page-number-btn" data-page="1">1</button></li>`;
+        if (startPage > 2) {
+            pagesHTML += `<li><span class="pagination-btn pagination-ellipsis">...</span></li>`;
+        }
     }
 
+    for (let i = startPage; i <= endPage; i++) {
+        pagesHTML += `<li><button class="pagination-btn page-number-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button></li>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            pagesHTML += `<li><span class="pagination-btn pagination-ellipsis">...</span></li>`;
+        }
+        pagesHTML += `<li><button class="pagination-btn page-number-btn" data-page="${totalPages}">${totalPages}</button></li>`;
+    }
 
     // Next button
     pagesHTML += `<li><button class="pagination-btn next-page-btn" ${currentPage === totalPages ? 'disabled' : ''}>Next</button></li>`;
 
     controlsContainer.innerHTML = `
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-3 md:space-y-0 p-4" aria-label="Table navigation">
-            <div class="flex items-center gap-2">
-                <span class="text-sm font-normal text-gray-400">Page Size:</span>
-                <select id="vod-page-size-select" class="bg-gray-700 border border-gray-600 rounded-md px-2 py-1 text-sm text-white focus:ring-blue-500 focus:border-blue-500">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3 p-3 sm:p-4 text-xs sm:text-sm" aria-label="Navegación de páginas">
+            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 text-gray-400">
+                <span class="font-medium">Items por pág:</span>
+                <select id="vod-page-size-select" class="bg-gray-700 border border-gray-600 rounded-lg px-2.5 py-1 text-white text-xs sm:text-sm focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
                     <option value="25" ${pageSize === 25 ? 'selected' : ''}>25</option>
                     <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
                     <option value="75" ${pageSize === 75 ? 'selected' : ''}>75</option>
                     <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
                 </select>
-                <span id="vod-pagination-info" class="text-sm font-normal text-gray-400 ml-4">
-                    Showing ${startItem}-${endItem} of ${totalItems}
+                <span id="vod-pagination-info" class="text-gray-400 font-normal">
+                    Mostrando ${startItem}-${endItem} de ${totalItems}
                 </span>
             </div>
-            <ul id="vod-pagination-pages" class="inline-flex items-center -space-x-px">
+            <ul id="vod-pagination-pages" class="flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 list-none m-0 p-0">
                 ${pagesHTML}
             </ul>
         </div>
