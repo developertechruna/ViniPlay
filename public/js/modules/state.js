@@ -147,4 +147,17 @@ export const UIElements = {
 
     // --- NEW: User Editor Elements ---
     userEditorSourceList: null,
+
+    // --- NEW: Player Time and Next Episode Elements ---
+    playerHeaderTime: null,
+    playerNextEpBtn: null,
+    playerNextEpOverlayBtn: null,
+    playerNextEpOverlayText: null,
+
+    // --- NEW: VOD Movie Progress Elements ---
+    vodMovieProgressContainer: null,
+    vodMovieProgressText: null,
+    vodMovieProgressBar: null,
+    vodPlayMovieBtnText: null,
+    vodRestartMovieBtn: null,
 };

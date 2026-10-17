@@ -30,6 +30,12 @@ let isLivePlayback = false; // true if channel / live stream
 let activeSeekOffset = 0; // Offset if started with startTime
 let hideBadgeTimeout = null;
 
+// --- NEW: Next Episode State ---
+let currentNextEpisode = null;
+let currentNextEpisodeCallback = null;
+let autoNextEpisodeTimeout = null;
+let hideNextBtnTimeout = null;
+
 /**
  * Handles a catastrophic stream error by attempting to restart the stream.
  */
@@ -159,6 +165,12 @@ export const stopAndCleanupPlayer = async () => { // MODIFIED: Made function asy
         UIElements.playerHeaderTime.classList.add('hidden');
         UIElements.playerHeaderTime.textContent = '';
     }
+
+    if (autoNextEpisodeTimeout) {
+        clearTimeout(autoNextEpisodeTimeout);
+        autoNextEpisodeTimeout = null;
+    }
+    setNextEpisode(null, null);
 
     // If we're casting, just close the modal and keep the cast session active
     if (castState.isCasting) {
@@ -359,13 +371,20 @@ export const playChannel = (url, name, channelId) => {
  * @param {string} url - The direct URL to the VOD file (e.g., .mp4, .mkv).
  * @param {string} title - The title of the VOD to display.
  */
-export const playVOD = async (url, title, logo = '', startTime = 0, vodContext = null) => {
+export const playVOD = async (url, title, logo = '', startTime = 0, vodContext = null, onNextCallback = null) => {
     const seekOffset = parseFloat(startTime) || 0;
     const useDirectPlay = guideState.settings.vodDirectPlayEnabled === true;
     console.log(`[VOD_PLAYER] Attempting to play VOD: "${title}" | Direct Play: ${useDirectPlay}`);
 
     // 1. Stop any existing player (live or VOD), regardless of play method chosen
     await stopAndCleanupPlayer(); // Use the existing cleanup function
+
+    // Setup Next Episode if provided
+    if (vodContext?.nextEpisode) {
+        setNextEpisode(vodContext.nextEpisode, onNextCallback);
+    } else {
+        setNextEpisode(null, null);
+    }
 
     // --- NATIVE / DIRECT PLAY Logic (Old Method) ---
     if (useDirectPlay) {
@@ -568,6 +587,13 @@ export const playVOD = async (url, title, logo = '', startTime = 0, vodContext =
                 duration: currentPlaybackDuration || vodContext?.duration || 0
             };
             startTracking(UIElements.videoElement, mpegtsTrackContext, seekOffset);
+
+            // Re-bind Next Episode callback for this session
+            if (vodContext?.nextEpisode) {
+                setNextEpisode(vodContext.nextEpisode, onNextCallback);
+            } else {
+                setNextEpisode(null, null);
+            }
 
             // Start stream info interval if needed
             if (streamInfoInterval) clearInterval(streamInfoInterval);
@@ -822,7 +848,21 @@ export function setupPlayerEventListeners() {
         }
     });
 
+    UIElements.videoElement.addEventListener('ended', () => {
+        console.log('[PLAYER] Video playback ended.');
+        if (currentNextEpisode && typeof currentNextEpisodeCallback === 'function') {
+            showNotification('Reproduciendo siguiente capítulo en 4 segundos...', false, 4000);
+            if (autoNextEpisodeTimeout) clearTimeout(autoNextEpisodeTimeout);
+            autoNextEpisodeTimeout = setTimeout(() => {
+                if (currentNextEpisode && typeof currentNextEpisodeCallback === 'function') {
+                    currentNextEpisodeCallback(currentNextEpisode);
+                }
+            }, 4000);
+        }
+    });
+
     setupTimeBadgeHoverListeners();
+    setupNextEpisodeOverlayHover();
 
     UIElements.videoElement.addEventListener('resize', () => {
         updatePlayerModalAspectRatio();
@@ -1086,4 +1126,92 @@ function setupTimeBadgeHoverListeners() {
         badge.style.opacity = '1';
     });
     UIElements.videoElement?.addEventListener('play', showBadge);
+}
+
+/**
+ * Updates the Next Episode button in the player header and the overlay button.
+ * @param {object|null} nextEp - Next episode details or null.
+ * @param {Function|null} onNextCallback - Callback to trigger next episode.
+ */
+export function setNextEpisode(nextEp, onNextCallback = null) {
+    currentNextEpisode = nextEp;
+    currentNextEpisodeCallback = onNextCallback;
+    if (autoNextEpisodeTimeout) {
+        clearTimeout(autoNextEpisodeTimeout);
+        autoNextEpisodeTimeout = null;
+    }
+
+    const show = !!nextEp;
+    const headerBtn = UIElements.playerNextEpBtn;
+    const overlayBtn = UIElements.playerNextEpOverlayBtn;
+    const overlayText = UIElements.playerNextEpOverlayText;
+
+    if (headerBtn) {
+        headerBtn.classList.toggle('hidden', !show);
+        if (show) {
+            headerBtn.title = `Siguiente: ${nextEp.name || nextEp.title || 'Siguiente capítulo'}`;
+            headerBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (autoNextEpisodeTimeout) clearTimeout(autoNextEpisodeTimeout);
+                if (currentNextEpisodeCallback) currentNextEpisodeCallback(nextEp);
+            };
+        }
+    }
+
+    if (overlayBtn) {
+        overlayBtn.classList.toggle('hidden', !show);
+        if (show) {
+            overlayBtn.style.opacity = '1';
+            overlayBtn.style.pointerEvents = 'auto';
+            if (overlayText) {
+                const epTitle = nextEp.name || nextEp.title || 'Capítulo';
+                const cleanName = epTitle.includes(' - ') ? epTitle.split(' - ').pop() : epTitle;
+                overlayText.textContent = `Siguiente: ${cleanName}`;
+            }
+            overlayBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (autoNextEpisodeTimeout) clearTimeout(autoNextEpisodeTimeout);
+                if (currentNextEpisodeCallback) currentNextEpisodeCallback(nextEp);
+            };
+        }
+    }
+}
+
+/**
+ * Sets up hover / fade behavior for the next episode overlay button inside the video player.
+ */
+function setupNextEpisodeOverlayHover() {
+    const container = document.getElementById('video-content');
+    const overlayBtn = UIElements.playerNextEpOverlayBtn;
+    if (!container || !overlayBtn) return;
+
+    const showOverlay = () => {
+        if (!currentNextEpisode) return;
+        overlayBtn.style.opacity = '1';
+        overlayBtn.style.pointerEvents = 'auto';
+        clearTimeout(hideNextBtnTimeout);
+        hideNextBtnTimeout = setTimeout(() => {
+            if (UIElements.videoElement && !UIElements.videoElement.paused && !UIElements.videoElement.ended) {
+                overlayBtn.style.opacity = '0';
+                overlayBtn.style.pointerEvents = 'none';
+            }
+        }, 3500);
+    };
+
+    container.addEventListener('mousemove', showOverlay);
+    container.addEventListener('mouseenter', showOverlay);
+    container.addEventListener('mouseleave', () => {
+        if (UIElements.videoElement && !UIElements.videoElement.paused && !UIElements.videoElement.ended) {
+            overlayBtn.style.opacity = '0';
+            overlayBtn.style.pointerEvents = 'none';
+        }
+    });
+
+    UIElements.videoElement?.addEventListener('pause', () => {
+        if (currentNextEpisode) {
+            overlayBtn.style.opacity = '1';
+            overlayBtn.style.pointerEvents = 'auto';
+        }
+    });
+    UIElements.videoElement?.addEventListener('play', showOverlay);
 }

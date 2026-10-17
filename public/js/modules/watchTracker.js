@@ -69,6 +69,17 @@ export async function sendProgressUpdate(force = false) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        window.dispatchEvent(new CustomEvent('vod-progress-synced', {
+            detail: {
+                contentType: payload.contentType,
+                contentId: payload.contentId,
+                episodeId: payload.episodeId,
+                currentTime: payload.currentTime,
+                duration: payload.duration,
+                percentage: payload.duration > 0 ? (payload.currentTime / payload.duration) * 100 : 0,
+                isCompleted: payload.duration > 0 && (payload.currentTime / payload.duration) >= 0.92 ? 1 : 0
+            }
+        }));
     } catch (e) {
         console.warn('[WATCH_TRACKER] Progress sync failed:', e);
     }

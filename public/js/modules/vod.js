@@ -7,7 +7,7 @@
 import { appState, UIElements, guideState } from './state.js'; // Keep guideState for settings
 import { openModal, closeModal, showNotification, navigate } from './ui.js';
 import { ICONS } from './icons.js';
-import { saveUserSetting, fetchVodLibrary, fetchSeriesDetails } from './api.js';
+import { saveUserSetting, fetchVodLibrary, fetchSeriesDetails, fetchVodProgress, fetchAllVodProgress } from './api.js';
 import { playVOD } from './player.js';
 import { withBase } from './basePath.js';
 
@@ -26,6 +26,12 @@ const vodState = {
         totalItems: 0,
         totalPages: 1,
     },
+    // Watch progress maps
+    allProgressMap: new Map(),
+    currentProgressMap: new Map(),
+    currentSeries: null,
+    currentMovie: null,
+    currentSeasonNum: 1,
 };
 
 function formatDurationDisplay(duration) {
@@ -71,6 +77,20 @@ export async function initVodPage() {
         UIElements.vodDirectPlayCheckbox.checked = savedVodDirectPlay;
     }
     console.log(`[VOD] Initial VOD Direct Play state: ${savedVodDirectPlay}`);
+
+    // 3.5 Load watch progress for all library items
+    try {
+        const allProgress = await fetchAllVodProgress();
+        vodState.allProgressMap = new Map();
+        if (Array.isArray(allProgress)) {
+            allProgress.forEach(p => {
+                const key = p.contentId ? String(p.contentId) : '';
+                vodState.allProgressMap.set(key, p);
+            });
+        }
+    } catch (e) {
+        console.warn('[VOD] Failed to load watch progress list:', e);
+    }
 
     // 4. Render the grid
     renderVodGrid();
@@ -165,17 +185,28 @@ function renderVodGrid() {
             // Use image proxy for both HTTP and HTTPS posters to avoid mixed content warnings
             const proxiedLogo = displayLogo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(displayLogo)}`) : displayLogo;
 
+            // Check watch progress
+            const prog = vodState.allProgressMap?.get(itemIdStr);
+            const isCompleted = prog && (prog.isCompleted === 1 || prog.percentage >= 90);
+            const inProgress = !isCompleted && prog && prog.percentage >= 2;
+
             return `
-                <div class="vod-item" data-id="${itemIdStr}">
+                <div class="vod-item relative group" data-id="${itemIdStr}">
                     <span class="vod-type-badge">${itemType}</span>
-                    <div class="vod-item-poster">
+                    ${isCompleted ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-bold bg-green-600/90 text-white shadow">VISTO</span>' : ''}
+                    <div class="vod-item-poster relative">
                         <img src="${proxiedLogo}"
                              alt="${displayName.replace(/"/g, '&quot;')}"
                              onerror="this.onerror=null; this.src='${placeholderImageUrl}'; this.style.objectFit='cover';">
+                        ${inProgress ? `
+                        <div class="absolute bottom-0 left-0 right-0 h-1.5 bg-gray-900/90 z-10">
+                            <div class="h-full bg-blue-500" style="width: ${Math.max(3, Math.min(100, prog.percentage))}%;"></div>
+                        </div>
+                        ` : ''}
                     </div>
                     <div class="vod-item-info">
                         <p class="vod-item-title" title="${displayName.replace(/"/g, '&quot;')}">${displayName}</p>
-                        <p class="vod-item-type">${displayGroup}</p>
+                        <p class="vod-item-type">${inProgress ? `${Math.round(prog.percentage)}% visto` : displayGroup}</p>
                     </div>
                 </div>
             `;
@@ -252,6 +283,20 @@ export async function initVodDetailsPage(path) {
         return;
     }
 
+    // 3.5 Fetch watch progress for this item
+    try {
+        const progressList = await fetchVodProgress(item.id);
+        vodState.currentProgressMap = new Map();
+        if (Array.isArray(progressList)) {
+            progressList.forEach(p => {
+                const key = p.episodeId ? String(p.episodeId) : String(p.contentId);
+                vodState.currentProgressMap.set(key, p);
+            });
+        }
+    } catch (e) {
+        console.warn(`[VOD] Failed to fetch watch progress for item ${item.id}:`, e);
+    }
+
     // 4. Render details onto page
     await renderVodDetails(item);
 }
@@ -325,32 +370,19 @@ async function renderVodDetails(item) {
 
     // --- Movie Logic ---
     if (item.type === 'movie') {
+        vodState.currentMovie = item;
+        vodState.currentSeries = null;
         if (UIElements.vodDetailsType) {
             UIElements.vodDetailsType.textContent = 'Película';
             UIElements.vodDetailsType.className = 'px-3 py-1 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 text-xs';
         }
         if (UIElements.vodDetailsMovieActions) UIElements.vodDetailsMovieActions.classList.remove('hidden');
 
-        const movieUrl = item.url;
-        const movieName = item.name;
-        const movieLogo = item.logo;
-        const movieContext = {
-            contentType: 'movie',
-            contentId: item.id,
-            title: item.name,
-            logo: item.logo,
-            streamUrl: item.url,
-            duration: item.duration || 0
-        };
-
-        if (UIElements.vodPlayMovieBtn) {
-            UIElements.vodPlayMovieBtn.onclick = () => {
-                playVOD(movieUrl, movieName, movieLogo, 0, movieContext);
-            };
-        }
+        updateMovieProgressUI(item);
 
         // --- Series Logic ---
     } else if (item.type === 'series') {
+        vodState.currentMovie = null;
         if (UIElements.vodDetailsType) {
             UIElements.vodDetailsType.textContent = 'Serie';
             UIElements.vodDetailsType.className = 'px-3 py-1 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs';
@@ -372,6 +404,7 @@ async function renderVodDetails(item) {
 
         const fullSeriesData = await fetchSeriesDetails(item.id);
         console.log(`[VOD] Fetched full series data for ID ${item.id}:`, fullSeriesData);
+        vodState.currentSeries = fullSeriesData;
 
         if (UIElements.vodEpisodeList) {
             UIElements.vodEpisodeList.dataset.seriesLogo = fullSeriesData?.logo || item.logo || '';
@@ -429,6 +462,151 @@ async function renderVodDetails(item) {
 }
 
 /**
+ * Updates the Movie Progress Bar and Play/Resume buttons.
+ */
+function updateMovieProgressUI(item) {
+    if (!item) return;
+    const movieProg = vodState.currentProgressMap.get(String(item.id)) || vodState.currentProgressMap.get('');
+    const hasResume = movieProg && movieProg.currentTime >= 5 && (movieProg.percentage < 90 || movieProg.isCompleted === 0);
+    const isWatched = movieProg && (movieProg.isCompleted === 1 || movieProg.percentage >= 90);
+
+    const movieUrl = item.url;
+    const movieName = item.name;
+    const movieLogo = item.logo;
+    const movieContext = {
+        contentType: 'movie',
+        contentId: item.id,
+        title: item.name,
+        logo: item.logo,
+        streamUrl: item.url,
+        duration: movieProg?.duration || item.duration || 0
+    };
+
+    if (UIElements.vodMovieProgressContainer) {
+        UIElements.vodMovieProgressContainer.classList.toggle('hidden', !hasResume);
+        if (hasResume) {
+            if (UIElements.vodMovieProgressText) {
+                UIElements.vodMovieProgressText.textContent = `${formatDurationDisplay(movieProg.currentTime)} / ${formatDurationDisplay(movieProg.duration || item.duration)} (${Math.round(movieProg.percentage)}%)`;
+            }
+            if (UIElements.vodMovieProgressBar) {
+                UIElements.vodMovieProgressBar.style.width = `${Math.max(2, Math.min(100, movieProg.percentage))}%`;
+            }
+        }
+    }
+
+    if (UIElements.vodPlayMovieBtnText) {
+        if (hasResume) {
+            UIElements.vodPlayMovieBtnText.textContent = `Reanudar en ${formatDurationDisplay(movieProg.currentTime)}`;
+        } else if (isWatched) {
+            UIElements.vodPlayMovieBtnText.textContent = 'Volver a ver';
+        } else {
+            UIElements.vodPlayMovieBtnText.textContent = 'Reproducir Película';
+        }
+    }
+
+    if (UIElements.vodRestartMovieBtn) {
+        UIElements.vodRestartMovieBtn.classList.toggle('hidden', !hasResume);
+        UIElements.vodRestartMovieBtn.onclick = () => {
+            playVOD(movieUrl, movieName, movieLogo, 0, movieContext);
+        };
+    }
+
+    if (UIElements.vodPlayMovieBtn) {
+        UIElements.vodPlayMovieBtn.onclick = () => {
+            const startAt = hasResume ? movieProg.currentTime : 0;
+            playVOD(movieUrl, movieName, movieLogo, startAt, movieContext);
+        };
+    }
+}
+
+/**
+ * Finds the subsequent episode in the season or next season.
+ * @param {object} series - The series details object.
+ * @param {number} seasonNum - Current season number.
+ * @param {number} episodeNum - Current episode number.
+ * @returns {object|null} The next episode or null.
+ */
+export function findNextEpisode(series, seasonNum, episodeNum) {
+    if (!series || !series.seasons) return null;
+    const sNum = parseInt(seasonNum, 10);
+    const epNum = parseInt(episodeNum, 10);
+    const currentSeasonEps = series.seasons[sNum] || [];
+
+    // Find current episode in this season
+    const sortedCurrent = [...currentSeasonEps].sort((a, b) => (parseInt(a.episode, 10) || 0) - (parseInt(b.episode, 10) || 0));
+    const currentIndex = sortedCurrent.findIndex(e => (parseInt(e.episode, 10) === epNum) || String(e.id) === String(episodeNum));
+
+    if (currentIndex !== -1 && currentIndex + 1 < sortedCurrent.length) {
+        const nextEp = sortedCurrent[currentIndex + 1];
+        return {
+            ...nextEp,
+            season: sNum,
+            episode: parseInt(nextEp.episode, 10) || (currentIndex + 2)
+        };
+    }
+
+    // If last episode of current season, check next season
+    const sortedSeasonKeys = Object.keys(series.seasons).map(Number).sort((a, b) => a - b);
+    const seasonIndex = sortedSeasonKeys.indexOf(sNum);
+    if (seasonIndex !== -1 && seasonIndex + 1 < sortedSeasonKeys.length) {
+        const nextSeasonNum = sortedSeasonKeys[seasonIndex + 1];
+        const nextSeasonEps = series.seasons[nextSeasonNum] || [];
+        if (nextSeasonEps.length > 0) {
+            const sortedNextSeasonEps = [...nextSeasonEps].sort((a, b) => (parseInt(a.episode, 10) || 0) - (parseInt(b.episode, 10) || 0));
+            const nextEp = sortedNextSeasonEps[0];
+            return {
+                ...nextEp,
+                season: nextSeasonNum,
+                episode: parseInt(nextEp.episode, 10) || 1
+            };
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Plays an episode with Next Episode awareness.
+ */
+export function playEpisode(series, seasonNum, ep, seekTime = 0) {
+    const sNum = parseInt(seasonNum, 10) || 1;
+    const epNum = parseInt(ep.episode, 10) || 1;
+    const seriesTitle = series.name || series.title || 'Serie';
+    const seriesLogo = series.logo || '';
+    const seriesId = series.id;
+    const epId = ep.id ? String(ep.id) : '';
+    const epName = ep.name || `Episodio ${epNum}`;
+    const cleanEpName = epName.includes(' - ') ? epName.split(' - ').pop() : epName;
+    const fullTitle = `${seriesTitle} - S${String(sNum).padStart(2, '0')}E${String(epNum).padStart(2, '0')} - ${cleanEpName}`;
+    const epDuration = parseInt(ep.duration, 10) || 0;
+
+    const nextEp = findNextEpisode(series, sNum, epNum);
+
+    const epContext = {
+        contentType: 'series',
+        contentId: seriesId,
+        title: fullTitle,
+        seriesName: seriesTitle,
+        seasonNum: sNum,
+        episodeNum: epNum,
+        episodeId: epId,
+        episodeTitle: epName,
+        logo: seriesLogo,
+        streamUrl: ep.url,
+        duration: epDuration,
+        nextEpisode: nextEp
+    };
+
+    const onNext = (nextItem) => {
+        console.log('[VOD] Next episode triggered:', nextItem);
+        playEpisode(series, nextItem.season, nextItem, 0);
+    };
+
+    console.log(`[VOD] Playing episode S${sNum}:E${epNum} "${cleanEpName}" (seek: ${seekTime}s, next: ${nextEp ? nextEp.name : 'None'})`);
+    playVOD(ep.url, fullTitle, seriesLogo, seekTime, epContext, onNext);
+}
+
+/**
  * Renders the list of episodes for a given season inside the details page.
  * @param {object} series - The full series object.
  * @param {number} seasonNum - The season number to render.
@@ -437,6 +615,7 @@ function renderEpisodeList(series, seasonNum) {
     const episodeListEl = UIElements.vodEpisodeList;
     if (!episodeListEl) return;
     const episodes = series.seasons[seasonNum];
+    vodState.currentSeasonNum = seasonNum;
     console.log(`[VOD] Rendering episodes for Series ID ${series.id}, Season ${seasonNum}:`, episodes);
 
     if (!episodes || episodes.length === 0) {
@@ -445,44 +624,65 @@ function renderEpisodeList(series, seasonNum) {
     }
 
     episodeListEl.innerHTML = episodes.map((ep, index) => {
-        let epName = ep.name.split(' - ').pop();
+        let epName = ep.name.includes(' - ') ? ep.name.split(' - ').pop() : ep.name;
         if (epName.length < 5) epName = ep.name;
         const originalTitle = ep.name || `Episodio ${index + 1}`;
         const epNum = ep.episode || (index + 1);
+        const epId = ep.id ? String(ep.id) : '';
+
+        // Check watch progress
+        const prog = vodState.currentProgressMap?.get(epId);
+        const isWatched = prog && (prog.isCompleted === 1 || prog.percentage >= 90);
+        const hasResume = !isWatched && prog && prog.currentTime >= 5;
+        const resumeTime = hasResume ? prog.currentTime : 0;
+        const durationSecs = prog?.duration || ep.duration || 0;
 
         return `
-            <div class="episode-item group flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-gray-800/80 hover:bg-gray-750 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
+            <div class="episode-item group flex flex-col p-3.5 sm:p-4 rounded-xl bg-gray-800/80 hover:bg-gray-750 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md"
                  data-url="${ep.url}"
                  data-title="${originalTitle.replace(/"/g, '&quot;')}"
                  data-season-num="${seasonNum}"
                  data-episode-num="${epNum}"
-                 data-id="${ep.id || ''}"
+                 data-id="${epId}"
                  data-episode-title="${epName.replace(/"/g, '&quot;')}"
-                 data-duration="${ep.duration || 0}">
+                 data-duration="${durationSecs}"
+                 data-resume-time="${resumeTime}">
                 
-                <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-grow pr-4">
-                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-700 group-hover:bg-blue-600/30 group-hover:text-blue-400 text-gray-300 font-bold text-xs sm:text-sm flex items-center justify-center flex-shrink-0 transition-colors border border-gray-600/60 group-hover:border-blue-500/50">
-                        ${index + 1}
-                    </div>
-                    <div class="min-w-0 flex-grow">
-                        <h4 class="text-white text-sm sm:text-base font-semibold truncate group-hover:text-blue-300 transition-colors" title="${epName.replace(/"/g, '&quot;')}">
-                            ${epName}
-                        </h4>
-                        <div class="flex items-center gap-2 sm:gap-3 text-xs text-gray-400 mt-0.5">
-                            <span class="text-purple-400 font-medium">T${seasonNum}:E${epNum}</span>
-                            ${ep.duration ? `<span>•</span><span>${formatDurationDisplay(ep.duration)}</span>` : ''}
-                            ${ep.air_date ? `<span>•</span><span>${ep.air_date}</span>` : ''}
+                <div class="flex items-center justify-between w-full">
+                    <div class="flex items-center gap-3 sm:gap-4 min-w-0 flex-grow pr-4">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ${isWatched ? 'bg-green-650/30 text-green-400 border-green-500/40' : (hasResume ? 'bg-blue-600/30 text-blue-400 border-blue-500/50' : 'bg-gray-700 text-gray-300 border-gray-600/60')} group-hover:bg-blue-600/30 group-hover:text-blue-400 font-bold text-xs sm:text-sm flex items-center justify-center flex-shrink-0 transition-colors border">
+                            ${isWatched ? '<svg class="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>' : (index + 1)}
                         </div>
+                        <div class="min-w-0 flex-grow">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-white text-sm sm:text-base font-semibold truncate group-hover:text-blue-300 transition-colors" title="${epName.replace(/"/g, '&quot;')}">
+                                    ${epName}
+                                </h4>
+                                ${isWatched ? '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-500/20 text-green-400 border border-green-500/30 flex-shrink-0">Visto</span>' : ''}
+                            </div>
+                            <div class="flex items-center gap-2 sm:gap-3 text-xs text-gray-400 mt-0.5">
+                                <span class="text-purple-400 font-medium">T${seasonNum}:E${epNum}</span>
+                                ${durationSecs ? `<span>•</span><span>${formatDurationDisplay(durationSecs)}</span>` : ''}
+                                ${hasResume ? `<span>•</span><span class="text-blue-400 font-semibold font-mono">Reanudar en ${formatDurationDisplay(resumeTime)} (${Math.round(prog.percentage)}%)</span>` : ''}
+                                ${ep.air_date ? `<span>•</span><span>${ep.air_date}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button type="button" class="episode-item-play-btn w-9 h-9 sm:w-10 sm:h-10 rounded-full ${isWatched ? 'bg-green-600/20 text-green-400 group-hover:bg-green-600' : 'bg-blue-600/20 text-blue-400 group-hover:bg-blue-600'} group-hover:text-white flex items-center justify-center transition-all duration-200 shadow group-hover:scale-105" title="${hasResume ? `Reanudar en ${formatDurationDisplay(resumeTime)}` : 'Reproducir episodio'}">
+                            <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8.118v3.764a1 1 0 001.555.832l3.197-1.882a1 1 0 000-1.664l-3.197-1.882z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 flex-shrink-0">
-                    <button type="button" class="episode-item-play-btn w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-600/20 group-hover:bg-blue-600 text-blue-400 group-hover:text-white flex items-center justify-center transition-all duration-200 shadow group-hover:scale-105" title="Reproducir episodio">
-                        <svg class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8.118v3.764a1 1 0 001.555.832l3.197-1.882a1 1 0 000-1.664l-3.197-1.882z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
+                ${hasResume ? `
+                <div class="w-full bg-gray-700/80 h-1 rounded-full overflow-hidden mt-3">
+                    <div class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: ${Math.max(2, Math.min(100, prog.percentage))}%;"></div>
                 </div>
+                ` : ''}
             </div>
         `;
     }).join('');
@@ -582,25 +782,42 @@ function setupVodEventListeners() {
     // Episode play click (Event Delegation)
     UIElements.vodEpisodeList?.addEventListener('click', (e) => {
         const episodeItem = e.target.closest('.episode-item');
-        if (episodeItem) {
-            const url = episodeItem.dataset.url;
-            const title = episodeItem.dataset.title;
-            const seriesLogo = UIElements.vodEpisodeList.dataset.seriesLogo || '';
-            const epDuration = parseInt(episodeItem.dataset.duration, 10) || 0;
-            const epContext = {
-                contentType: 'series',
-                contentId: UIElements.vodEpisodeList.dataset.seriesId || '',
-                title: UIElements.vodEpisodeList.dataset.seriesName || title,
-                seriesName: UIElements.vodEpisodeList.dataset.seriesName || '',
-                seasonNum: parseInt(episodeItem.dataset.seasonNum, 10) || 1,
-                episodeNum: parseInt(episodeItem.dataset.episodeNum, 10) || 1,
-                episodeId: episodeItem.dataset.id || '',
-                episodeTitle: episodeItem.dataset.episodeTitle || title,
-                logo: seriesLogo,
-                streamUrl: url,
-                duration: epDuration
+        if (episodeItem && vodState.currentSeries) {
+            const seasonNum = parseInt(episodeItem.dataset.seasonNum, 10) || 1;
+            const epNum = parseInt(episodeItem.dataset.episodeNum, 10) || 1;
+            const epId = episodeItem.dataset.id;
+            const resumeTime = parseFloat(episodeItem.dataset.resumeTime) || 0;
+
+            const seasonEps = vodState.currentSeries.seasons?.[seasonNum] || [];
+            const epObj = seasonEps.find(ep => String(ep.id) === String(epId) || parseInt(ep.episode, 10) === epNum) || {
+                url: episodeItem.dataset.url,
+                name: episodeItem.dataset.episodeTitle || episodeItem.dataset.title,
+                id: epId,
+                season: seasonNum,
+                episode: epNum,
+                duration: parseInt(episodeItem.dataset.duration, 10) || 0
             };
-            playVOD(url, title, seriesLogo, 0, epContext);
+
+            playEpisode(vodState.currentSeries, seasonNum, epObj, resumeTime);
+        }
+    });
+
+    // Real-time progress updates during playback
+    window.addEventListener('vod-progress-synced', (e) => {
+        const detail = e.detail;
+        if (!detail) return;
+        const key = detail.episodeId ? String(detail.episodeId) : String(detail.contentId);
+        vodState.currentProgressMap.set(key, detail);
+        if (detail.contentId) {
+            vodState.allProgressMap.set(String(detail.contentId), detail);
+        }
+
+        // If currently on VOD details page for this series
+        if (vodState.currentSeries && String(vodState.currentSeries.id) === String(detail.contentId)) {
+            const seasonNum = parseInt(UIElements.vodSeasonSelect?.value, 10) || vodState.currentSeasonNum || 1;
+            renderEpisodeList(vodState.currentSeries, seasonNum);
+        } else if (vodState.currentMovie && String(vodState.currentMovie.id) === String(detail.contentId)) {
+            updateMovieProgressUI(vodState.currentMovie);
         }
     });
 }

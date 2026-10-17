@@ -1693,13 +1693,29 @@
                             <!-- Title -->
                             <h1 id="vod-details-title" class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-4 drop-shadow-md"></h1>
 
-                            <!-- Play Movie Button (for movies) -->
+                            <!-- Play Movie Button & Progress (for movies) -->
                             <div id="vod-details-movie-actions" class="hidden mb-5">
-                                <button id="vod-play-movie-btn" type="button"
-                                    class="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 transition-all duration-200 transform hover:scale-102 cursor-pointer text-base sm:text-lg">
-                                    <span data-icon="play" class="w-6 h-6"></span>
-                                    <span>Reproducir Película</span>
-                                </button>
+                                <div id="vod-movie-progress-container" class="hidden max-w-md w-full bg-gray-800/90 border border-gray-700/60 rounded-xl p-3.5 space-y-2 mb-4">
+                                    <div class="flex items-center justify-between text-xs">
+                                        <span class="text-gray-300 font-medium">Progreso de reproducción</span>
+                                        <span id="vod-movie-progress-text" class="text-blue-400 font-mono font-semibold"></span>
+                                    </div>
+                                    <div class="w-full bg-gray-700/80 h-2 rounded-full overflow-hidden">
+                                        <div id="vod-movie-progress-bar" class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <button id="vod-play-movie-btn" type="button"
+                                        class="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 transition-all duration-200 transform hover:scale-102 cursor-pointer text-base sm:text-lg">
+                                        <span data-icon="play" class="w-6 h-6"></span>
+                                        <span id="vod-play-movie-btn-text">Reproducir Película</span>
+                                    </button>
+                                    <button id="vod-restart-movie-btn" type="button"
+                                        class="hidden inline-flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white font-semibold py-3.5 px-6 rounded-xl border border-gray-700 transition-all duration-200 cursor-pointer text-sm">
+                                        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+                                        <span>Desde el inicio</span>
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Plot summary -->
@@ -2498,8 +2514,20 @@
         <div id="video-modal-container" class="bg-gray-900 rounded-lg shadow-xl max-h-[90vh] flex flex-col"
             style="width: 896px; height: 558px;">
             <div class="flex justify-between items-center p-3 border-b border-gray-700 flex-shrink-0">
-                <h3 id="video-title" class="text-lg font-semibold text-white truncate"></h3>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-3 min-w-0 mr-2">
+                    <h3 id="video-title" class="text-lg font-semibold text-white truncate"></h3>
+                    <span id="player-header-time" class="hidden text-xs font-mono font-medium text-blue-400 bg-gray-800/90 px-2.5 py-0.5 rounded-full border border-gray-700/60 flex-shrink-0"></span>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <!-- Siguiente Capítulo Button in Modal Header -->
+                    <button id="player-next-ep-btn"
+                        class="hidden text-white bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-md font-semibold text-xs flex items-center gap-1.5 shadow transition-all duration-200 hover:scale-105"
+                        title="Reproducir siguiente capítulo">
+                        <span>Sig. Cap.</span>
+                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4.555 5.168A1 1 0 003 6.07v7.86a1 1 0 001.555.902l6-3.93a1 1 0 000-1.804l-6-3.93zM12 6a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1z"/>
+                        </svg>
+                    </button>
                     <!-- NEW: Stream Info Toggle Button -->
                     <button id="stream-info-toggle-btn"
                         class="text-gray-400 hover:text-white p-2 rounded-md hover:bg-gray-700"
@@ -2554,6 +2582,16 @@
             </div>
             <div id="video-content" class="flex-grow min-h-0 p-1 bg-black relative flex items-center justify-center overflow-hidden">
                 <video id="videoElement" controls autoplay class="w-full h-full max-w-full max-h-full object-contain"></video>
+
+                <!-- Floating Next Episode Overlay Button -->
+                <button id="player-next-ep-overlay-btn"
+                    class="hidden absolute bottom-16 right-4 z-30 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow-2xl flex items-center gap-2 backdrop-blur-md border border-white/20 transition-all duration-200 hover:scale-105 cursor-pointer">
+                    <span id="player-next-ep-overlay-text">Siguiente capítulo</span>
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4.555 5.168A1 1 0 003 6.07v7.86a1 1 0 001.555.902l6-3.93a1 1 0 000-1.804l-6-3.93zM12 6a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V7a1 1 0 011-1z"/>
+                    </svg>
+                </button>
+
                 <!-- NEW: Stream Info Overlay -->
                 <div id="stream-info-overlay" class="hidden">
                     <p id="stream-info-resolution"></p>
@@ -3073,7 +3111,7 @@
         </div>
     </div>
 
-    <script type="module" src="/js/main.js?v=14"></script>
+    <script type="module" src="/js/main.js?v=15"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">

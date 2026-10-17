@@ -2811,6 +2811,43 @@ app.post('/api/vod/progress', requireAuth, async (req, res) => {
     }
 });
 
+app.get('/api/vod/progress', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const rows = await dbAll(db, `
+            SELECT content_type as contentType, content_id as contentId, episode_id as episodeId,
+                   season_num as seasonNum, episode_num as episodeNum, current_time as currentTime,
+                   duration, percentage, is_completed as isCompleted, last_watched_at as lastWatchedAt
+            FROM vod_watch_progress
+            WHERE user_id = ?
+            ORDER BY last_watched_at DESC
+        `, [userId]);
+        res.json({ success: true, items: rows });
+    } catch (error) {
+        console.error('[API_VOD] Error fetching all watch progress:', error);
+        res.status(500).json({ error: 'Failed to fetch watch progress.' });
+    }
+});
+
+app.get('/api/vod/progress/:contentId', requireAuth, async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        const contentId = req.params.contentId;
+        const rows = await dbAll(db, `
+            SELECT content_type as contentType, content_id as contentId, episode_id as episodeId,
+                   season_num as seasonNum, episode_num as episodeNum, current_time as currentTime,
+                   duration, percentage, is_completed as isCompleted, last_watched_at as lastWatchedAt
+            FROM vod_watch_progress
+            WHERE user_id = ? AND content_id = ?
+            ORDER BY last_watched_at DESC
+        `, [userId, contentId]);
+        res.json({ success: true, items: rows });
+    } catch (error) {
+        console.error('[API_VOD] Error fetching watch progress for content:', error);
+        res.status(500).json({ error: 'Failed to fetch watch progress.' });
+    }
+});
+
 app.get('/api/vod/continue-watching', requireAuth, async (req, res) => {
     try {
         const userId = req.session.userId;

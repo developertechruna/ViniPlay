@@ -180,10 +180,19 @@ const initializeUIElements = () => {
     UIElements.vodDetailsDesc = document.getElementById('vod-details-desc');
     UIElements.vodDetailsMovieActions = document.getElementById('vod-details-movie-actions');
     UIElements.vodPlayMovieBtn = document.getElementById('vod-play-movie-btn');
+    UIElements.vodMovieProgressContainer = document.getElementById('vod-movie-progress-container');
+    UIElements.vodMovieProgressText = document.getElementById('vod-movie-progress-text');
+    UIElements.vodMovieProgressBar = document.getElementById('vod-movie-progress-bar');
+    UIElements.vodPlayMovieBtnText = document.getElementById('vod-play-movie-btn-text');
+    UIElements.vodRestartMovieBtn = document.getElementById('vod-restart-movie-btn');
     UIElements.vodDetailsSeriesActions = document.getElementById('vod-details-series-actions');
     UIElements.vodSeasonSelect = document.getElementById('vod-season-select');
     UIElements.vodEpisodeList = document.getElementById('vod-episode-list');
     UIElements.vodEpisodesCountBadge = document.getElementById('vod-episodes-count-badge');
+    UIElements.playerHeaderTime = document.getElementById('player-header-time');
+    UIElements.playerNextEpBtn = document.getElementById('player-next-ep-btn');
+    UIElements.playerNextEpOverlayBtn = document.getElementById('player-next-ep-overlay-btn');
+    UIElements.playerNextEpOverlayText = document.getElementById('player-next-ep-overlay-text');
     // --- END VOD Elements ---
 
     // Settings Buttons

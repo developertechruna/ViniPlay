@@ -416,3 +416,37 @@ export async function fetchSeriesDetails(seriesId) {
         return null;
     }
 }
+
+/**
+ * Fetches watch progress records for a specific content ID (movie or series).
+ * @param {string} contentId - Provider unique ID or series ID.
+ * @returns {Promise<Array>} Array of watch progress objects.
+ */
+export async function fetchVodProgress(contentId) {
+    try {
+        const response = await apiFetch(`/api/vod/progress/${encodeURIComponent(contentId)}?t=${Date.now()}`);
+        if (!response || !response.ok) return [];
+        const data = await response.json();
+        return data?.items || [];
+    } catch (e) {
+        console.warn(`[API] Error fetching watch progress for ${contentId}:`, e);
+        return [];
+    }
+}
+
+/**
+ * Fetches all watch progress records for the current user.
+ * @returns {Promise<Array>} Array of all watch progress objects.
+ */
+export async function fetchAllVodProgress() {
+    try {
+        const response = await apiFetch(`/api/vod/progress?t=${Date.now()}`);
+        if (!response || !response.ok) return [];
+        const data = await response.json();
+        return data?.items || [];
+    } catch (e) {
+        console.warn('[API] Error fetching all watch progress:', e);
+        return [];
+    }
+}
+
