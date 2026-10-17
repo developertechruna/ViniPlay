@@ -193,6 +193,13 @@ const initializeUIElements = () => {
     UIElements.playerNextEpBtn = document.getElementById('player-next-ep-btn');
     UIElements.playerNextEpOverlayBtn = document.getElementById('player-next-ep-overlay-btn');
     UIElements.playerNextEpOverlayText = document.getElementById('player-next-ep-overlay-text');
+    UIElements.vodTypeFavorites = document.getElementById('vod-type-favorites');
+    UIElements.vodDetailsFavoriteBtn = document.getElementById('vod-details-favorite-btn');
+    UIElements.vodDetailsFavoriteIcon = document.getElementById('vod-details-favorite-icon');
+    UIElements.vodDetailsFavoriteText = document.getElementById('vod-details-favorite-text');
+    UIElements.dashboardVodFavoritesGrid = document.getElementById('dashboard-vod-favorites-grid');
+    UIElements.dashboardVodFavoritesEmpty = document.getElementById('dashboard-vod-favorites-empty');
+    UIElements.dashboardVodFavoritesCount = document.getElementById('dashboard-vod-favorites-count');
     // --- END VOD Elements ---
 
     // Settings Buttons

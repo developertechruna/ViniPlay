@@ -34,6 +34,7 @@ export const guideState = {
         multiviewLayouts: [], // To store saved layouts for the user
         adminPageSize: 25, // NEW: Default page size for the admin history table
         vodDirectPlayEnabled: false, // Default to false (use mpegts.js/profiles)
+        vodFavorites: [], // Favorite movies and series
         // Default timezone offset based on browser's timezone (will be overridden by server settings)
         timezoneOffset: Math.round(-(new Date().getTimezoneOffset() / 60)),
     }, // This will hold both GLOBAL and USER settings, merged.
@@ -160,4 +161,13 @@ export const UIElements = {
     vodMovieProgressBar: null,
     vodPlayMovieBtnText: null,
     vodRestartMovieBtn: null,
+
+    // --- NEW: VOD Favorites Elements ---
+    vodTypeFavorites: null,
+    vodDetailsFavoriteBtn: null,
+    vodDetailsFavoriteIcon: null,
+    vodDetailsFavoriteText: null,
+    dashboardVodFavoritesGrid: null,
+    dashboardVodFavoritesEmpty: null,
+    dashboardVodFavoritesCount: null,
 };

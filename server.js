@@ -3410,7 +3410,7 @@ app.post('/api/save/settings', requireAuth, async (req, res) => {
 
         const updatedSettings = { ...currentSettings };
         for (const key in req.body) {
-            if (!['favorites', 'playerDimensions', 'programDetailsDimensions', 'recentChannels', 'multiviewLayouts'].includes(key)) {
+            if (!['favorites', 'vodFavorites', 'playerDimensions', 'programDetailsDimensions', 'recentChannels', 'multiviewLayouts'].includes(key)) {
                 updatedSettings[key] = req.body[key];
             } else {
                 console.warn(`[SETTINGS_SAVE] Attempted to save user-specific key "${key}" to global settings. This is ignored.`);

@@ -1616,6 +1616,10 @@
                             class="vod-type-btn tab-button text-sm sm:text-base font-medium py-2 px-4 text-gray-300 hover:bg-gray-700 rounded-md transition-colors">Movies</button>
                         <button id="vod-type-series"
                             class="vod-type-btn tab-button text-sm sm:text-base font-medium py-2 px-4 text-gray-300 hover:bg-gray-700 rounded-md transition-colors">Series</button>
+                        <button id="vod-type-favorites"
+                            class="vod-type-btn tab-button text-sm sm:text-base font-medium py-2 px-4 text-gray-300 hover:bg-gray-700 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer">
+                            <span class="text-yellow-400">★</span> Favoritos
+                        </button>
                     </div>
                     <div
                         class="relative w-full sm:w-auto grid grid-cols-1 sm:flex sm:items-center sm:justify-end gap-2">
@@ -1693,18 +1697,20 @@
                             <!-- Title -->
                             <h1 id="vod-details-title" class="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-4 drop-shadow-md"></h1>
 
-                            <!-- Play Movie Button & Progress (for movies) -->
-                            <div id="vod-details-movie-actions" class="hidden mb-5">
-                                <div id="vod-movie-progress-container" class="hidden max-w-md w-full bg-gray-800/90 border border-gray-700/60 rounded-xl p-3.5 space-y-2 mb-4">
-                                    <div class="flex items-center justify-between text-xs">
-                                        <span class="text-gray-300 font-medium">Progreso de reproducción</span>
-                                        <span id="vod-movie-progress-text" class="text-blue-400 font-mono font-semibold"></span>
-                                    </div>
-                                    <div class="w-full bg-gray-700/80 h-2 rounded-full overflow-hidden">
-                                        <div id="vod-movie-progress-bar" class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
-                                    </div>
+                            <!-- Progress bar for movies -->
+                            <div id="vod-movie-progress-container" class="hidden max-w-md w-full bg-gray-800/90 border border-gray-700/60 rounded-xl p-3.5 space-y-2 mb-4">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-gray-300 font-medium">Progreso de reproducción</span>
+                                    <span id="vod-movie-progress-text" class="text-blue-400 font-mono font-semibold"></span>
                                 </div>
-                                <div class="flex flex-wrap items-center gap-3">
+                                <div class="w-full bg-gray-700/80 h-2 rounded-full overflow-hidden">
+                                    <div id="vod-movie-progress-bar" class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Actions Row: Movie Play Buttons and Shared Favorite Button -->
+                            <div class="flex flex-wrap items-center gap-3 mb-5">
+                                <div id="vod-details-movie-actions" class="hidden flex flex-wrap items-center gap-3">
                                     <button id="vod-play-movie-btn" type="button"
                                         class="inline-flex items-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-8 rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 transition-all duration-200 transform hover:scale-102 cursor-pointer text-base sm:text-lg">
                                         <span data-icon="play" class="w-6 h-6"></span>
@@ -1716,6 +1722,11 @@
                                         <span>Desde el inicio</span>
                                     </button>
                                 </div>
+                                <button id="vod-details-favorite-btn" type="button"
+                                    class="inline-flex items-center gap-2 py-3.5 px-6 rounded-xl border border-gray-700 bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white font-semibold transition-all duration-200 cursor-pointer text-sm shadow-md">
+                                    <span id="vod-details-favorite-icon" class="text-base text-gray-400 leading-none">★</span>
+                                    <span id="vod-details-favorite-text">Marcar como Favorito</span>
+                                </button>
                             </div>
 
                             <!-- Plot summary -->
@@ -1779,6 +1790,37 @@
                         <div id="dashboard-favorites-empty" class="hidden text-center text-gray-500 py-8">
                             <p class="text-sm font-medium">No tienes canales favoritos guardados.</p>
                             <p class="text-xs text-gray-500 mt-1">Marca canales con la estrella (★) en la Guía de TV para acceder rápidamente a ellos desde aquí.</p>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Películas y Series Favoritas -->
+                    <div class="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-lg">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-gray-700 pb-3">
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                                    <span class="text-yellow-400">★</span> Películas y Series Favoritas
+                                </h2>
+                                <span id="dashboard-vod-favorites-count" class="hidden text-xs bg-gray-700 text-gray-300 font-medium px-2 py-0.5 rounded-md"></span>
+                            </div>
+                            <!-- Filter Tabs: Todos, Películas, Series -->
+                            <div class="flex items-center gap-1.5 bg-gray-900/60 p-1 rounded-lg border border-gray-700/50 text-xs">
+                                <button type="button" id="dashboard-vod-fav-filter-all" class="px-3 py-1 rounded-md font-medium transition-colors bg-blue-600 text-white cursor-pointer">
+                                    Todos <span id="dashboard-vod-fav-all-count" class="opacity-80"></span>
+                                </button>
+                                <button type="button" id="dashboard-vod-fav-filter-movies" class="px-3 py-1 rounded-md font-medium transition-colors text-gray-400 hover:text-white cursor-pointer">
+                                    Películas <span id="dashboard-vod-fav-movies-count" class="opacity-80"></span>
+                                </button>
+                                <button type="button" id="dashboard-vod-fav-filter-series" class="px-3 py-1 rounded-md font-medium transition-colors text-gray-400 hover:text-white cursor-pointer">
+                                    Series <span id="dashboard-vod-fav-series-count" class="opacity-80"></span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="dashboard-vod-favorites-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 md:gap-6">
+                            <!-- Injected dynamically with favorite VOD cards -->
+                        </div>
+                        <div id="dashboard-vod-favorites-empty" class="hidden text-center text-gray-500 py-8">
+                            <p class="text-sm font-medium">No tienes películas ni series favoritas guardadas.</p>
+                            <p class="text-xs text-gray-500 mt-1">Marca contenido con la estrella (★) en VOD para acceder rápidamente desde aquí.</p>
                         </div>
                     </div>
 
@@ -3111,7 +3153,7 @@
         </div>
     </div>
 
-    <script type="module" src="/js/main.js?v=15"></script>
+    <script type="module" src="/js/main.js?v=17"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">

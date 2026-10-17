@@ -11,8 +11,11 @@ import { withBase } from './basePath.js';
 import { playVOD, playChannel } from './player.js';
 import { guideState } from './state.js';
 import { navigate } from './ui.js';
+import { toggleVodFavorite } from './vod.js';
 
 let isDashboardLoading = false;
+let currentVodFavFilter = 'all'; // 'all' | 'movie' | 'series'
+let vodFavListenerInitialized = false;
 
 /**
  * Initializes the Dashboard page and loads all sections.
@@ -21,12 +24,22 @@ export async function initDashboardPage() {
     if (isDashboardLoading) return;
     isDashboardLoading = true;
 
+    setupVodFavFilters();
+
+    if (!vodFavListenerInitialized) {
+        vodFavListenerInitialized = true;
+        window.addEventListener('vod-favorite-changed', () => {
+            loadFavoriteVODs();
+        });
+    }
+
     const refreshBtn = document.getElementById('dashboard-refresh-btn');
     if (refreshBtn && !refreshBtn.dataset.hasListener) {
         refreshBtn.dataset.hasListener = 'true';
         refreshBtn.addEventListener('click', () => {
             console.log('[DASHBOARD] Manual refresh triggered');
             loadFavoriteChannels();
+            loadFavoriteVODs();
             loadContinueWatching();
             loadSeriesSummary();
         });
@@ -35,6 +48,7 @@ export async function initDashboardPage() {
     try {
         await Promise.all([
             loadFavoriteChannels(),
+            loadFavoriteVODs(),
             loadContinueWatching(),
             loadSeriesSummary()
         ]);
@@ -140,6 +154,204 @@ function createFavoriteChannelCard(channel) {
         console.log(`[DASHBOARD] Playing favorite channel: ${channelName}`);
         playChannel(channel.url, channelName, channel.id);
     });
+
+    return card;
+}
+
+/**
+ * Sets up tab filter listeners for Dashboard VOD Favorites.
+ */
+function setupVodFavFilters() {
+    const btnAll = document.getElementById('dashboard-vod-fav-filter-all');
+    const btnMovies = document.getElementById('dashboard-vod-fav-filter-movies');
+    const btnSeries = document.getElementById('dashboard-vod-fav-filter-series');
+
+    const updateFilterUI = () => {
+        [
+            { btn: btnAll, filter: 'all' },
+            { btn: btnMovies, filter: 'movie' },
+            { btn: btnSeries, filter: 'series' }
+        ].forEach(({ btn, filter }) => {
+            if (!btn) return;
+            const isActive = currentVodFavFilter === filter;
+            if (isActive) {
+                btn.className = 'px-3 py-1 rounded-md font-medium transition-colors bg-blue-600 text-white cursor-pointer';
+            } else {
+                btn.className = 'px-3 py-1 rounded-md font-medium transition-colors text-gray-400 hover:text-white cursor-pointer';
+            }
+        });
+    };
+
+    if (btnAll && !btnAll.dataset.hasListener) {
+        btnAll.dataset.hasListener = 'true';
+        btnAll.addEventListener('click', () => {
+            currentVodFavFilter = 'all';
+            updateFilterUI();
+            loadFavoriteVODs();
+        });
+    }
+    if (btnMovies && !btnMovies.dataset.hasListener) {
+        btnMovies.dataset.hasListener = 'true';
+        btnMovies.addEventListener('click', () => {
+            currentVodFavFilter = 'movie';
+            updateFilterUI();
+            loadFavoriteVODs();
+        });
+    }
+    if (btnSeries && !btnSeries.dataset.hasListener) {
+        btnSeries.dataset.hasListener = 'true';
+        btnSeries.addEventListener('click', () => {
+            currentVodFavFilter = 'series';
+            updateFilterUI();
+            loadFavoriteVODs();
+        });
+    }
+}
+
+/**
+ * Fetches and renders favorite movies and series in the dedicated Dashboard section.
+ */
+export async function loadFavoriteVODs() {
+    const grid = document.getElementById('dashboard-vod-favorites-grid');
+    const emptyMsg = document.getElementById('dashboard-vod-favorites-empty');
+    const countBadge = document.getElementById('dashboard-vod-favorites-count');
+    const allCountBadge = document.getElementById('dashboard-vod-fav-all-count');
+    const moviesCountBadge = document.getElementById('dashboard-vod-fav-movies-count');
+    const seriesCountBadge = document.getElementById('dashboard-vod-fav-series-count');
+    if (!grid) return;
+
+    try {
+        if (!guideState.settings?.vodFavorites) {
+            const config = await fetchConfig();
+            if (config?.settings) {
+                Object.assign(guideState.settings, config.settings);
+            }
+        }
+
+        const rawFavs = guideState.settings?.vodFavorites || [];
+        const allFavs = rawFavs.map(f => {
+            if (typeof f === 'object' && f !== null) {
+                return {
+                    id: String(f.id),
+                    type: f.type || 'movie',
+                    name: f.name || f.title || 'VOD',
+                    logo: f.logo || '',
+                    group: f.group || '',
+                    year: f.year || '',
+                    rating: f.rating || ''
+                };
+            }
+            return { id: String(f), type: 'movie', name: 'VOD', logo: '', group: '' };
+        });
+
+        const movieFavs = allFavs.filter(f => f.type === 'movie');
+        const seriesFavs = allFavs.filter(f => f.type === 'series');
+
+        // Update counts
+        if (countBadge) {
+            countBadge.textContent = allFavs.length;
+            countBadge.classList.toggle('hidden', allFavs.length === 0);
+        }
+        if (allCountBadge) allCountBadge.textContent = `(${allFavs.length})`;
+        if (moviesCountBadge) moviesCountBadge.textContent = `(${movieFavs.length})`;
+        if (seriesCountBadge) seriesCountBadge.textContent = `(${seriesFavs.length})`;
+
+        // Filter based on active selection
+        let displayed = allFavs;
+        if (currentVodFavFilter === 'movie') {
+            displayed = movieFavs;
+        } else if (currentVodFavFilter === 'series') {
+            displayed = seriesFavs;
+        }
+
+        if (displayed.length === 0) {
+            grid.innerHTML = '';
+            if (emptyMsg) {
+                emptyMsg.classList.remove('hidden');
+                const emptyText = emptyMsg.querySelector('p');
+                if (emptyText) {
+                    if (allFavs.length === 0) {
+                        emptyText.textContent = 'No tienes películas ni series favoritas guardadas.';
+                    } else if (currentVodFavFilter === 'movie') {
+                        emptyText.textContent = 'No tienes películas favoritas guardadas.';
+                    } else {
+                        emptyText.textContent = 'No tienes series favoritas guardadas.';
+                    }
+                }
+            }
+            return;
+        }
+
+        emptyMsg?.classList.add('hidden');
+        grid.innerHTML = '';
+
+        displayed.forEach(item => {
+            const card = createFavoriteVodCard(item);
+            grid.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error('[DASHBOARD] Error loading favorite VODs:', err);
+        grid.innerHTML = '';
+        emptyMsg?.classList.remove('hidden');
+        if (countBadge) countBadge.classList.add('hidden');
+    }
+}
+
+/**
+ * Creates an interactive card for a Favorite Movie or Series matching native .vod-item styling.
+ */
+function createFavoriteVodCard(item) {
+    const card = document.createElement('div');
+    card.className = 'vod-item group cursor-pointer relative';
+    card.dataset.id = String(item.id);
+
+    const isSeries = item.type === 'series';
+    const badgeText = isSeries ? 'Serie' : 'Película';
+    const badgeClass = isSeries ? 'bg-purple-600/80 text-white' : 'bg-blue-600/80 text-white';
+    const safeTitle = item.name || (isSeries ? 'Serie' : 'Película');
+    const safeSubtitle = item.group || (item.year ? String(item.year) : (isSeries ? 'Serie' : 'Película'));
+    const placeholderPoster = `https://placehold.co/400x600/1f2937/d1d5db?text=${encodeURIComponent(safeTitle)}`;
+    const posterUrl = item.logo
+        ? (item.logo.startsWith('http') ? withBase(`/api/image-proxy?url=${encodeURIComponent(item.logo)}`) : item.logo)
+        : placeholderPoster;
+
+    card.innerHTML = `
+        <span class="vod-type-badge ${badgeClass}">${badgeText}</span>
+
+        <!-- Botón Quitar de Favoritos (hover / top-right) -->
+        <button type="button" class="remove-fav-btn absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full bg-black/80 hover:bg-red-600 text-yellow-400 hover:text-white text-xs transition-colors z-20 cursor-pointer" title="Quitar de favoritos">
+            ★
+        </button>
+
+        <div class="vod-item-poster">
+            <img src="${posterUrl}"
+                 alt="${safeTitle.replace(/"/g, '&quot;')}"
+                 loading="lazy"
+                 class="group-hover:scale-105 transition-transform duration-300"
+                 onerror="this.onerror=null; this.src='${placeholderPoster}'; this.style.objectFit='cover';">
+        </div>
+
+        <div class="vod-item-info">
+            <p class="vod-item-title group-hover:text-blue-400 transition-colors" title="${safeTitle.replace(/"/g, '&quot;')}">${safeTitle}</p>
+            <p class="vod-item-type" title="${safeSubtitle.replace(/"/g, '&quot;')}">${safeSubtitle}</p>
+        </div>
+    `;
+
+    // Click card navigates to details page
+    card.addEventListener('click', (e) => {
+        if (e.target.closest('.remove-fav-btn')) return;
+        navigate(`/vod/details/${encodeURIComponent(item.id)}`);
+    });
+
+    // Remove favorite click
+    const removeBtn = card.querySelector('.remove-fav-btn');
+    if (removeBtn) {
+        removeBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await toggleVodFavorite(item);
+        });
+    }
 
     return card;
 }

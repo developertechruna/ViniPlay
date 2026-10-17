@@ -136,13 +136,16 @@ function renderVodGrid() {
 
     // 1. Get current filter values
     const activeTypeBtn = document.querySelector('.vod-type-btn.active');
-    const typeFilter = activeTypeBtn ? activeTypeBtn.id.replace('vod-type-', '') : 'all'; // 'all', 'movies', 'series'
+    const typeFilter = activeTypeBtn ? activeTypeBtn.id.replace('vod-type-', '') : 'all'; // 'all', 'movies', 'series', 'favorites'
     const groupFilter = UIElements.vodGroupFilter.value; // 'all' or specific group
     const searchFilter = UIElements.vodSearchInput.value.toLowerCase();
 
     // 2. Apply filters to the full library
     vodState.filteredLibrary = vodState.fullLibrary.filter(item => {
-        const typeMatch = (typeFilter === 'all') || (typeFilter === 'movies' && item.type === 'movie') || (typeFilter === 'series' && item.type === 'series');
+        const typeMatch = (typeFilter === 'all')
+            || (typeFilter === 'movies' && item.type === 'movie')
+            || (typeFilter === 'series' && item.type === 'series')
+            || (typeFilter === 'favorites' && isVodFavorite(item.id));
         const groupMatch = (groupFilter === 'all') || (item.group === groupFilter);
         const searchMatch = (searchFilter === '') || (item.name.toLowerCase().includes(searchFilter));
 
@@ -189,11 +192,15 @@ function renderVodGrid() {
             const prog = vodState.allProgressMap?.get(itemIdStr);
             const isCompleted = prog && (prog.isCompleted === 1 || prog.percentage >= 90);
             const inProgress = !isCompleted && prog && prog.percentage >= 2;
+            const isFav = isVodFavorite(itemIdStr);
 
             return `
                 <div class="vod-item relative group" data-id="${itemIdStr}">
                     <span class="vod-type-badge">${itemType}</span>
                     ${isCompleted ? '<span class="absolute top-2 left-2 z-10 px-2 py-0.5 rounded text-[10px] font-bold bg-green-600/90 text-white shadow">VISTO</span>' : ''}
+                    <button type="button" class="vod-fav-btn absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center rounded-full ${isFav ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 shadow' : 'bg-gray-950/70 text-gray-400 hover:text-yellow-400 border border-gray-700/60 opacity-80 hover:opacity-100'} transition-all cursor-pointer" data-id="${itemIdStr}" title="${isFav ? 'Quitar de favoritos' : 'Añadir a favoritos'}">
+                        <span class="text-xs leading-none">${isFav ? '★' : '☆'}</span>
+                    </button>
                     <div class="vod-item-poster relative">
                         <img src="${proxiedLogo}"
                              alt="${displayName.replace(/"/g, '&quot;')}"
@@ -360,6 +367,15 @@ async function renderVodDetails(item) {
     }
     if (UIElements.vodDetailsDesc) {
         UIElements.vodDetailsDesc.textContent = item.description || `Detalles para ${safeName}.`;
+    }
+
+    // Favorite Button update and binding
+    updateVodFavoriteButton(item);
+    if (UIElements.vodDetailsFavoriteBtn) {
+        UIElements.vodDetailsFavoriteBtn.onclick = async () => {
+            const currentItem = vodState.currentMovie || vodState.currentSeries || item;
+            await toggleVodFavorite(currentItem);
+        };
     }
 
     // Reset visibility
@@ -727,23 +743,25 @@ function setupVodEventListeners() {
     });
 
     // --- Filter Bar Listeners ---
-    UIElements.vodTypeAll?.addEventListener('click', () => {
-        UIElements.vodTypeAll.classList.add('active');
-        UIElements.vodTypeMovies?.classList.remove('active');
-        UIElements.vodTypeSeries?.classList.remove('active');
-        renderVodGrid();
-    });
-    UIElements.vodTypeMovies?.addEventListener('click', () => {
-        UIElements.vodTypeAll?.classList.remove('active');
-        UIElements.vodTypeMovies.classList.add('active');
-        UIElements.vodTypeSeries?.classList.remove('active');
-        renderVodGrid();
-    });
-    UIElements.vodTypeSeries?.addEventListener('click', () => {
-        UIElements.vodTypeAll?.classList.remove('active');
-        UIElements.vodTypeMovies?.classList.remove('active');
-        UIElements.vodTypeSeries.classList.add('active');
-        renderVodGrid();
+    const vodTypeFavorites = document.getElementById('vod-type-favorites');
+    const typeButtons = [
+        UIElements.vodTypeAll,
+        UIElements.vodTypeMovies,
+        UIElements.vodTypeSeries,
+        vodTypeFavorites
+    ].filter(Boolean);
+
+    typeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            typeButtons.forEach(b => {
+                b.classList.remove('active');
+                b.classList.add('text-gray-300');
+            });
+            btn.classList.add('active');
+            btn.classList.remove('text-gray-300');
+            vodState.pagination.currentPage = 1;
+            renderVodGrid();
+        });
     });
 
     UIElements.vodGroupFilter?.addEventListener('change', renderVodGrid);
@@ -770,7 +788,19 @@ function setupVodEventListeners() {
     }
 
     // --- VOD Grid Click Listener (Event Delegation) ---
-    UIElements.vodGrid?.addEventListener('click', (e) => {
+    UIElements.vodGrid?.addEventListener('click', async (e) => {
+        const favBtn = e.target.closest('.vod-fav-btn');
+        if (favBtn) {
+            e.stopPropagation();
+            e.preventDefault();
+            const itemId = favBtn.dataset.id;
+            const item = vodState.fullLibrary?.find(i => String(i.id) === String(itemId));
+            if (item) {
+                await toggleVodFavorite(item);
+            }
+            return;
+        }
+
         const vodItemEl = e.target.closest('.vod-item');
         if (vodItemEl) {
             const itemId = vodItemEl.dataset.id;
@@ -818,6 +848,33 @@ function setupVodEventListeners() {
             renderEpisodeList(vodState.currentSeries, seasonNum);
         } else if (vodState.currentMovie && String(vodState.currentMovie.id) === String(detail.contentId)) {
             updateMovieProgressUI(vodState.currentMovie);
+        }
+    });
+
+    // Real-time favorite status updates
+    window.addEventListener('vod-favorite-changed', (e) => {
+        const detail = e.detail;
+        if (!detail) return;
+        const { itemId, isFavorite } = detail;
+
+        // Update cards in VOD grid if visible
+        const favBtns = document.querySelectorAll(`.vod-fav-btn[data-id="${itemId}"]`);
+        favBtns.forEach(btn => {
+            btn.title = isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos';
+            btn.className = `vod-fav-btn absolute top-2 right-2 z-20 w-7 h-7 flex items-center justify-center rounded-full ${isFavorite ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 shadow' : 'bg-gray-950/70 text-gray-400 hover:text-yellow-400 border border-gray-700/60 opacity-80 hover:opacity-100'} transition-all cursor-pointer`;
+            btn.innerHTML = `<span class="text-xs leading-none">${isFavorite ? '★' : '☆'}</span>`;
+        });
+
+        // Update details button if currently viewing this item
+        const cur = vodState.currentMovie || vodState.currentSeries;
+        if (cur && String(cur.id) === String(itemId)) {
+            updateVodFavoriteButton(cur);
+        }
+
+        // If currently on Favorites filter in catalog, re-render grid
+        const activeTypeBtn = document.querySelector('.vod-type-btn.active');
+        if (activeTypeBtn && activeTypeBtn.id === 'vod-type-favorites') {
+            renderVodGrid();
         }
     });
 }
@@ -937,3 +994,89 @@ function changeVodPageSize(event) {
         // import('./api.js').then(({ saveUserSetting }) => saveUserSetting('vodPageSize', newSize));
     }
 }
+
+/**
+ * Checks if a movie or series is marked as favorite.
+ * @param {string|number} itemId - The ID of the VOD item.
+ * @returns {boolean} True if favorite.
+ */
+export function isVodFavorite(itemId) {
+    if (!itemId) return false;
+    const strId = String(itemId);
+    const favs = guideState.settings?.vodFavorites || [];
+    return favs.some(f => String(f?.id || f) === strId);
+}
+
+/**
+ * Toggles a movie or series favorite status and persists it via saveUserSetting.
+ * @param {object} item - The movie or series object.
+ * @returns {Promise<boolean>} True if now favorite, false if removed.
+ */
+export async function toggleVodFavorite(item) {
+    if (!item || !item.id) return false;
+    const itemId = String(item.id);
+    let favs = [...(guideState.settings?.vodFavorites || [])];
+    const index = favs.findIndex(f => String(f?.id || f) === itemId);
+    let isNowFavorite = false;
+
+    if (index !== -1) {
+        favs.splice(index, 1);
+        isNowFavorite = false;
+        showNotification(`Eliminado de favoritos: "${item.name || 'Contenido'}"`, false, 2000);
+    } else {
+        const itemType = item.type || (item.seasons ? 'series' : 'movie');
+        favs.unshift({
+            id: itemId,
+            type: itemType,
+            name: item.name || item.title || '',
+            logo: item.logo || '',
+            group: item.group || '',
+            year: item.year || '',
+            rating: item.rating || '',
+            duration: item.duration || '',
+            addedAt: Date.now()
+        });
+        isNowFavorite = true;
+        showNotification(`Añadido a favoritos: "${item.name || 'Contenido'}"`, false, 2000);
+    }
+
+    guideState.settings.vodFavorites = favs;
+    try {
+        await saveUserSetting('vodFavorites', favs);
+    } catch (err) {
+        console.error('[VOD] Error saving vodFavorites:', err);
+    }
+
+    window.dispatchEvent(new CustomEvent('vod-favorite-changed', {
+        detail: { itemId, isFavorite: isNowFavorite, item }
+    }));
+
+    return isNowFavorite;
+}
+
+/**
+ * Updates the favorite button on the VOD Details hero page.
+ * @param {object} item - The movie or series item.
+ */
+export function updateVodFavoriteButton(item) {
+    if (!UIElements.vodDetailsFavoriteBtn || !item) return;
+    const isFav = isVodFavorite(item.id);
+
+    if (UIElements.vodDetailsFavoriteIcon) {
+        UIElements.vodDetailsFavoriteIcon.textContent = isFav ? '★' : '☆';
+        UIElements.vodDetailsFavoriteIcon.className = isFav ? 'text-base text-yellow-400 leading-none' : 'text-base text-gray-400 leading-none';
+    }
+
+    if (UIElements.vodDetailsFavoriteText) {
+        UIElements.vodDetailsFavoriteText.textContent = isFav ? 'Favorito' : 'Marcar como Favorito';
+    }
+
+    if (isFav) {
+        UIElements.vodDetailsFavoriteBtn.className = 'inline-flex items-center gap-2 py-3.5 px-6 rounded-xl border border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-semibold transition-all duration-200 cursor-pointer text-sm shadow-md';
+        UIElements.vodDetailsFavoriteBtn.title = 'Quitar de favoritos';
+    } else {
+        UIElements.vodDetailsFavoriteBtn.className = 'inline-flex items-center gap-2 py-3.5 px-6 rounded-xl border border-gray-700 bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white font-semibold transition-all duration-200 cursor-pointer text-sm shadow-md';
+        UIElements.vodDetailsFavoriteBtn.title = 'Marcar como favorito';
+    }
+}
+
