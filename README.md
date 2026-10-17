@@ -55,14 +55,20 @@ The server-side backend resolves common CORS and browser compatibility issues by
  - 🎥 **DVR**: Record programs using FFMPEG. Schedule recording via the TV Guide, or set specific channels and time with ease.
  - 📽️ **Single player**: Play .m3u8 and .ts links directly from the browser, with detailed console logs and recorded history
  - 👥 **Admin monitoring page**: Monitor users watch stream in real time, store historical plays, and broadcast messages to all users.
- - 📺 **VODs support**: Play your VODs from your provider, divided cleanly in the UI with a scalable grid, with filters and tabs for Movies and Series (IMPORTANT: this only workd with XC API log in)
+ - 📺 **VODs support**: Play your VODs from your provider, divided cleanly in the UI with a scalable grid, with filters and tabs for Movies and Series (IMPORTANT: this only works with XC API log in).
+ - 🎬 **Dedicated Full-Page VOD Details View**: Full cinematic page for movies and series (`/vod/details/:id`) featuring dynamic blurred backdrops, high-definition posters, metadata badges, movie progress bar, and interactive episode selectors.
+ - ⭐ **Favorites Management**: Star favorite live TV channels as well as movies and series, accessible directly from the Dashboard and catalog filters.
+ - ⏯️ **Playback Tracking & Next Episode**: Real-time watch history tracking, exact resume positions, current playback time display, and one-click "Next Episode" button during series streaming.
+ - 🧭 **Quick Dashboard Access**: Access the personal dashboard directly by clicking the brand logo or application name.
+ - 👤 **Unified User Dropdown Menu**: Clean profile button with user initials avatar and dropdown menu for session management and dashboard shortcut.
+ - 📱 **Adaptive & Responsive Layout**: Fluid responsive design that adapts gracefully to mobile devices, tablets, split-screen desktop windows, and widescreen monitors with no horizontal clipping.
  - 📊 **Personalized Dashboard & Watch Progress**: Dedicated home hub featuring starred favorite live channels, "Continue Watching" cards with exact resume timestamps for movies, and a series progress summary tracker.
  - 🌐 **Customizable Base Path (`BASE_PATH`)**: Run ViniPlay under any custom subpath (e.g., `/viniplay` or `/iptv`) or directly at the root domain (`/`), with full reverse proxy and HTTPS support.
 ---
 
 ## ⚡ Custom Enhancements (`feature/custom-features`)
 
-This branch introduces several core improvements designed for reverse proxy environments and enhanced playback tracking:
+This branch introduces several core improvements designed for reverse proxy environments, modern user interfaces, and enhanced playback tracking:
 
 ### 1. Customizable Base Path & Reverse Proxy Support
 - **Optional Subpath**: Set `BASE_PATH=/viniplay` in `.env` or Docker to host ViniPlay under a subpath, or leave it empty/unset to host at domain root (`/`).
@@ -73,13 +79,44 @@ This branch introduces several core improvements designed for reverse proxy envi
 - **Favorite Channels**: Top panel with instant access to your starred live TV channels.
 - **Continue Watching (Movies)**: Tracks exact playback timestamps and completion percentages, allowing instant one-click resume.
 - **Series In-Progress Summary**: Displays active series with episode progress (e.g. `12 / 24 vistos`) and resume button for the next episode.
+- **Favorite Movies & Series Section**: Dedicated grid highlighting starred VOD items with quick tabs for All, Movies, and Series.
 
-### 3. VOD Stream Stability & Transcoding Optimizations
+### 3. Dedicated Full-Page VOD Details (`/vod/details/:id`)
+- **Cinematic Experience**: Replaced the previous modal popup with a dedicated full-page layout.
+- **Dynamic Backdrop**: High-resolution backdrop image with subtle blur and gradients matching the movie or series.
+- **Metadata Badges**: Quick information tags for format type, release year, runtime duration, genre, and rating.
+- **Movie Playback Controls**: Visual progress bar indicating percentage watched and elapsed time, with buttons to resume or restart from the beginning.
+- **Interactive Series Episode Guide**: Season selector with episode cards displaying titles, runtimes, and play buttons.
+
+### 4. VOD Favorites System
+- **One-Click Favoriting**: Star (★) button available on cards across the catalog, in the details page, and on the dashboard.
+- **Catalog Filter**: Quick "★ Favoritos" tab in the VOD library to display all saved favorites.
+- **Persistent Storage**: Favorites persist per user account in backend storage.
+
+### 5. Advanced Player Controls & Next Episode Flow
+- **Current Elapsed Time**: Real-time counter on the player header displaying exact stream time and total duration.
+- **Next Episode Button**: In series playback, a dedicated "Siguiente capítulo" button appears in the player header and on-screen overlay whenever a consecutive episode exists.
+- **Automatic Progress Sync**: Regular background synchronization with the server keeps progress accurate across sessions and devices.
+
+### 6. Quick Dashboard Navigation & Unified User Menu
+- **Brand Logo Navigation**: Clicking the "VINI PLAY" logo/text navigates directly to the Dashboard (`/dashboard`).
+- **Unified User Dropdown Component**:
+  - Compact profile pill button displaying an avatar badge with the user's initial and username.
+  - Smooth dropdown menu with account indicator ("Conectado como <user>"), shortcut to "Mi Dashboard", and distinct "Cerrar Sesión" (`Logout`) action.
+  - Accessible keyboard navigation (Enter, Space, Escape) and automatic dismissal when clicking outside.
+
+### 7. Responsive & Adaptive UI Design
+- **Adaptive Filter Bars**: Updated `#vod-filter-bar` and `#unified-guide-header` to transition from 2-row layouts on tablets/mobile to 1-row on desktop (`lg:flex-row`), preventing search inputs and toggles from clipping off-screen.
+- **Elastic Input Fields**: Category select and search inputs adjust proportionally (`flex-1 min-w-[140px]`) to available viewport width.
+- **Horizontal Scrollable Pills**: Category buttons support touch scrolling (`overflow-x-auto no-scrollbar`) on compact screens.
+- **Native CSS Pagination**: Rebuilt `.pagination-btn` in standard CSS to guarantee cross-browser compatibility, uniform spacing, active states, and adjacent page numbers (e.g. `1 ... 4 5 6 ... 383`).
+
+### 8. VOD Stream Stability & Transcoding Optimizations
 - **FFmpeg Resilience**: Injected `-reconnect`, `-reconnect_streamed`, and `-re` parameters to prevent connection drops, buffer underruns, and desync on remote streams.
 - **Container Format Auto-Fallback**: Automatically selects FFmpeg transcoding when container formats (MKV, MP4, AVI) are played under redirect profiles.
 - **Configurable VOD Settings**: Custom sync interval (default 5s) and minimum watch threshold configurable from Settings.
 
-### 4. Integration with [ambiente-docker](https://github.com/developertechruna/ambiente-docker)
+### 9. Integration with [ambiente-docker](https://github.com/developertechruna/ambiente-docker)
 This branch is tailored to integrate with the Docker deployment ecosystem in [developertechruna/ambiente-docker](https://github.com/developertechruna/ambiente-docker):
 - **Centralized Reverse Proxy**: Aligns with the Nginx configurations located in `manifests/viniplay/`, enabling ViniPlay to coexist under the `/viniplay` subpath alongside multiple services without port collisions or domain fragmentation.
 - **Header Synchronization**: Consumes `X-Forwarded-Prefix`, `X-Forwarded-Proto`, and WebSocket upgrade headers provided by the `ambiente-docker` proxy stack to ensure seamless video streaming, API proxying, and push notification delivery.
