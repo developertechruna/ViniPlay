@@ -47,6 +47,7 @@ const initializeUIElements = () => {
     UIElements.mobileNavMenu = document.getElementById('mobile-nav-menu');
     UIElements.mobileMenuClose = document.getElementById('mobile-menu-close');
     UIElements.mobileNavGuide = document.getElementById('mobile-nav-guide');
+    UIElements.mobileNavDashboard = document.getElementById('mobile-nav-dashboard');
     UIElements.mobileNavSettings = document.getElementById('mobile-nav-settings');
     UIElements.mobileNavLogoutBtn = document.getElementById('mobile-nav-logout-btn');
     UIElements.mobileMenuOverlay = document.getElementById('mobile-menu-overlay');

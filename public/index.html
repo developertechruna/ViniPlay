@@ -2498,54 +2498,54 @@
 
     <!-- Mobile Navigation Menu -->
     <div id="mobile-nav-menu"
-        class="hidden fixed inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-700 z-50 flex-col py-6 px-4 transform -translate-x-full transition-transform duration-300 ease-in-out">
-        <div class="flex justify-between items-center mb-6">
+        class="hidden fixed inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-700 z-50 flex-col py-6 px-4 transform -translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto custom-scrollbar">
+        <div class="flex justify-between items-center mb-6 flex-shrink-0">
             <h2 class="text-xl font-bold text-white">Navigation</h2>
-            <button id="mobile-menu-close"
-                class="text-gray-400 hover:text-white text-3xl leading-none font-bold">&times;</button>
+            <button id="mobile-menu-close" type="button"
+                class="text-gray-400 hover:text-white text-3xl leading-none font-bold cursor-pointer">&times;</button>
         </div>
-        <nav class="flex flex-col gap-4">
-            <button id="mobile-nav-guide"
-                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors active">
-                <span class="flex items-center gap-2"><span data-icon="guide"></span> TV Guide</span>
+        <nav class="flex flex-col gap-3">
+            <button id="mobile-nav-guide" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="guide"></span> TV Guide</span>
             </button>
-            <button id="mobile-nav-multiview"
-                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
-                <span class="flex items-center gap-2"><span data-icon="multiview"></span> Multi-View</span>
+            <button id="mobile-nav-multiview" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="multiview"></span> Multi-View</span>
             </button>
-            <button id="mobile-nav-player"
-                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
-                <span class="flex items-center gap-2"><span data-icon="play"></span> Player</span>
+            <button id="mobile-nav-player" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="play"></span> Player</span>
             </button>
-            <button id="mobile-nav-dvr"
-                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
-                <span class="flex items-center gap-2"><span data-icon="dvr"></span> DVR</span>
+            <button id="mobile-nav-dvr" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="dvr"></span> DVR</span>
             </button>
-            <button id="mobile-nav-dashboard"
-                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
-                <span class="flex items-center gap-2"><span data-icon="dashboard"></span> Mi Dashboard</span>
+            <button id="mobile-nav-dashboard" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="dashboard"></span> Mi Dashboard</span>
             </button>
-            <button id="mobile-nav-vod"
-                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
-                <span class="flex items-center gap-2"><span data-icon="multiview"></span> VODs</span>
+            <button id="mobile-nav-vod" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="multiview"></span> VODs</span>
             </button>
             <!-- NEW: Admin Activity Tab (Mobile) -->
-            <button id="mobile-nav-activity"
-                class="hidden text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
-                <span class="flex items-center gap-2"><span data-icon="info"></span> Activity</span>
+            <button id="mobile-nav-activity" type="button"
+                class="hidden text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="info"></span> Activity</span>
             </button>
-            <button id="mobile-nav-notifications"
-                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
-                <span class="flex items-center gap-2"><span data-icon="notifications"></span> Notifications</span>
+            <button id="mobile-nav-notifications" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="notifications"></span> Notifications</span>
             </button>
-            <button id="mobile-nav-settings"
-                class="text-left tab-button text-lg font-medium py-2 px-3 text-gray-300 hover:bg-gray-800 rounded-md transition-colors">
-                <span class="flex items-center gap-2"><span data-icon="settings"></span> Settings</span>
+            <button id="mobile-nav-settings" type="button"
+                class="text-left tab-button text-base font-medium py-2.5 px-3 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors cursor-pointer">
+                <span class="flex items-center gap-2.5"><span data-icon="settings"></span> Settings</span>
             </button>
         </nav>
-        <div class="mt-auto">
-            <button id="mobile-nav-logout-btn"
-                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-md transition-colors">Logout</button>
+        <div class="mt-auto pt-6 flex-shrink-0">
+            <button id="mobile-nav-logout-btn" type="button"
+                class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-3 rounded-lg transition-colors cursor-pointer">Logout</button>
         </div>
     </div>
 
@@ -3153,7 +3153,7 @@
         </div>
     </div>
 
-    <script type="module" src="/js/main.js?v=17"></script>
+    <script type="module" src="/js/main.js?v=18"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">

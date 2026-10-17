@@ -310,15 +310,28 @@ export const makeColumnResizable = (handleEl, targetEl, minWidth, settingKey, cs
     });
 };
 
+let mobileMenuTimer = null;
+
 /**
  * Opens the mobile navigation menu.
  */
 export const openMobileMenu = () => {
-    if (UIElements.mobileNavMenu) {
-        UIElements.mobileNavMenu.classList.remove('hidden');
-        UIElements.mobileNavMenu.classList.remove('-translate-x-full');
-        UIElements.mobileNavMenu.classList.add('translate-x-0');
+    if (!UIElements.mobileNavMenu) return;
+
+    if (mobileMenuTimer) {
+        clearTimeout(mobileMenuTimer);
+        mobileMenuTimer = null;
     }
+
+    UIElements.mobileNavMenu.classList.remove('hidden');
+    UIElements.mobileNavMenu.classList.add('flex');
+
+    // Force reflow for smooth transform transition
+    void UIElements.mobileNavMenu.offsetHeight;
+
+    UIElements.mobileNavMenu.classList.remove('-translate-x-full');
+    UIElements.mobileNavMenu.classList.add('translate-x-0');
+
     if (UIElements.mobileMenuOverlay) {
         UIElements.mobileMenuOverlay.classList.remove('hidden');
     }
@@ -329,18 +342,46 @@ export const openMobileMenu = () => {
  * Closes the mobile navigation menu.
  */
 export const closeMobileMenu = () => {
-    if (UIElements.mobileNavMenu) {
-        UIElements.mobileNavMenu.classList.add('-translate-x-full');
-        UIElements.mobileNavMenu.classList.remove('translate-x-0');
-        UIElements.mobileNavMenu.addEventListener('transitionend', function handler() {
-            UIElements.mobileNavMenu.classList.add('hidden');
-            UIElements.mobileNavMenu.removeEventListener('transitionend', handler);
-        });
+    if (!UIElements.mobileNavMenu) return;
+
+    // If already closed and hidden, nothing to do
+    const isAlreadyClosed = UIElements.mobileNavMenu.classList.contains('-translate-x-full') && UIElements.mobileNavMenu.classList.contains('hidden');
+    if (isAlreadyClosed) return;
+
+    if (mobileMenuTimer) {
+        clearTimeout(mobileMenuTimer);
+        mobileMenuTimer = null;
     }
+
+    UIElements.mobileNavMenu.classList.remove('translate-x-0');
+    UIElements.mobileNavMenu.classList.add('-translate-x-full');
+
     if (UIElements.mobileMenuOverlay) {
         UIElements.mobileMenuOverlay.classList.add('hidden');
     }
     document.body.classList.remove('overflow-hidden');
+
+    // Clean timeout matching duration-300 instead of leaky transitionend event
+    mobileMenuTimer = setTimeout(() => {
+        if (UIElements.mobileNavMenu && UIElements.mobileNavMenu.classList.contains('-translate-x-full')) {
+            UIElements.mobileNavMenu.classList.remove('flex');
+            UIElements.mobileNavMenu.classList.add('hidden');
+        }
+        mobileMenuTimer = null;
+    }, 320);
+};
+
+/**
+ * Toggles the mobile navigation menu open/closed.
+ */
+export const toggleMobileMenu = () => {
+    if (!UIElements.mobileNavMenu) return;
+    const isClosed = UIElements.mobileNavMenu.classList.contains('-translate-x-full') || UIElements.mobileNavMenu.classList.contains('hidden');
+    if (isClosed) {
+        openMobileMenu();
+    } else {
+        closeMobileMenu();
+    }
 };
 
 // FINAL FIX: This function will be called whenever a setting is saved.

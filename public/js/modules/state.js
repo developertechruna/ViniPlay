@@ -83,6 +83,7 @@ export const UIElements = {
     // --- NEW: VOD Page Elements ---
     tabVod: null,
     mobileNavVod: null,
+    mobileNavDashboard: null,
     pageVod: null,
     vodFilterBar: null,
     vodTypeAll: null,

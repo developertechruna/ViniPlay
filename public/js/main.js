@@ -13,7 +13,7 @@ import { handleGuideLoad, finalizeGuideLoad, setupGuideEventListeners } from './
 import { setupPlayerEventListeners, playChannel, stopAndCleanupPlayer, shouldMaintainAspectRatio } from './modules/player.js';
 import { setupSettingsEventListeners, populateTimezoneSelector, updateUIFromSettings } from './modules/settings.js';
 // MODIFIED: Imported showBroadcastMessage
-import { makeModalResizable, handleRouteChange, switchTab, handleConfirm, closeModal, makeColumnResizable, openMobileMenu, closeMobileMenu, showNotification, showBroadcastMessage, updateProcessingStatus, showConfirm, refreshGuideAfterProcessing } from './modules/ui.js';
+import { makeModalResizable, handleRouteChange, switchTab, handleConfirm, closeModal, makeColumnResizable, openMobileMenu, closeMobileMenu, toggleMobileMenu, showNotification, showBroadcastMessage, updateProcessingStatus, showConfirm, refreshGuideAfterProcessing } from './modules/ui.js';
 // MODIFIED: Import navigateToProgramInGuide to handle deep links from notifications.
 import { loadAndScheduleNotifications, subscribeUserToPush, navigateToProgramInGuide } from './modules/notification.js';
 import { setupDvrEventListeners, handleDvrChannelClick, initDvrPage } from './modules/dvr.js';
@@ -441,7 +441,7 @@ function setupCoreEventListeners() {
     setupTabListener(UIElements.tabSettings, 'settings');
 
     // Mobile Navigation
-    UIElements.mobileMenuToggle?.addEventListener('click', openMobileMenu);
+    UIElements.mobileMenuToggle?.addEventListener('click', toggleMobileMenu);
     UIElements.mobileMenuClose?.addEventListener('click', closeMobileMenu);
     UIElements.mobileMenuOverlay?.addEventListener('click', closeMobileMenu);
 
