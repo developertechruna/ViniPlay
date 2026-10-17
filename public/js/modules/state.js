@@ -76,9 +76,16 @@ export const UIElements = {
     // --- **FIX: Add the new element for notification settings** ---
     notificationSettings: document.getElementById('notification-settings-container'),
 
-    // --- NEW: Header Elements for Scroll Logic ---
+    // --- NEW: Header Elements for Scroll Logic & Brand/User Menu ---
     mainHeader: document.getElementById('main-header'),
     unifiedGuideHeader: document.getElementById('unified-guide-header'),
+    brandLogoBtn: null,
+    userMenuContainer: null,
+    userDropdownMenu: null,
+    userDropdownDashboardBtn: null,
+    userMenuChevron: null,
+    userAvatarInitial: null,
+    userDropdownName: null,
 
     // --- NEW: VOD Page Elements ---
     tabVod: null,

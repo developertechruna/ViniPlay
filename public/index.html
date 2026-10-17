@@ -1260,19 +1260,21 @@
         <header id="main-header"
             class="bg-gray-800 text-white p-4 shadow-md flex-shrink-0 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <button id="mobile-menu-toggle"
-                    class="lg:hidden text-gray-300 hover:text-white p-2 rounded-md transition-colors">
+                <button id="mobile-menu-toggle" type="button"
+                    class="lg:hidden text-gray-300 hover:text-white p-2 rounded-md transition-colors cursor-pointer"
+                    title="Menu">
                     <span data-icon="menu"></span>
                 </button>
-                <img src="/viniplay.png" alt="VINI PLAY Logo" class="h-8 w-8">
-                <h1 class="text-xl sm:text-2xl font-bold">VINI PLAY</h1>
+                <div id="brand-logo-btn"
+                    role="button"
+                    tabindex="0"
+                    class="flex items-center gap-2.5 cursor-pointer select-none group focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg p-1 -m-1"
+                    title="Ir al Dashboard">
+                    <img src="/viniplay.png" alt="VINI PLAY Logo" class="h-8 w-8 group-hover:scale-105 transition-transform duration-200">
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white group-hover:text-blue-400 transition-colors">VINI PLAY</h1>
+                </div>
             </div>
             <div class="flex items-center gap-4">
-                <button id="user-display"
-                    class="tab-button hidden sm:block text-sm sm:text-base font-medium py-2 px-3 sm:px-4 text-gray-300 hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
-                    title="Dashboard">
-                    <span id="user-display-name"></span>
-                </button>
                 <div class="hidden lg:flex gap-2">
                     <button id="tab-guide"
                         class="tab-button text-sm sm:text-base font-medium py-2 px-4 text-gray-300 hover:bg-gray-700 active rounded-md transition-colors">TV
@@ -1292,8 +1294,44 @@
                     <button id="tab-settings"
                         class="tab-button text-sm sm:text-base font-medium py-2 px-4 text-gray-300 hover:bg-gray-700 rounded-md transition-colors">Settings</button>
                 </div>
-                <button id="logout-btn"
-                    class="text-sm bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-md transition-colors">Logout</button>
+
+                <!-- Unified User Component with Logout Dropdown -->
+                <div id="user-menu-container" class="relative">
+                    <button id="user-display" type="button"
+                        class="flex items-center gap-2.5 py-1.5 px-3 rounded-xl bg-gray-700/80 hover:bg-gray-700 border border-gray-600/60 text-white font-medium text-sm transition-all duration-200 cursor-pointer shadow-sm hover:shadow"
+                        aria-expanded="false" aria-haspopup="true" title="Menú de usuario">
+                        <div class="w-7 h-7 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold text-xs uppercase">
+                            <span id="user-avatar-initial">U</span>
+                        </div>
+                        <span id="user-display-name" class="max-w-[120px] sm:max-w-[160px] truncate"></span>
+                        <svg id="user-menu-chevron" class="w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="user-dropdown-menu"
+                        class="hidden absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl py-1.5 z-50 transform opacity-0 scale-95 transition-all duration-150">
+                        <div class="px-3.5 py-2 border-b border-gray-700/60">
+                            <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Conectado como</p>
+                            <p id="user-dropdown-name" class="text-sm font-bold text-white truncate"></p>
+                        </div>
+                        <div class="p-1 space-y-0.5">
+                            <button id="user-dropdown-dashboard-btn" type="button"
+                                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700/70 rounded-lg transition-colors cursor-pointer text-left">
+                                <span data-icon="dashboard" class="w-4 h-4 text-blue-400"></span>
+                                <span>Mi Dashboard</span>
+                            </button>
+                            <button id="logout-btn" type="button"
+                                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer text-left">
+                                <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span>Cerrar Sesión</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -3153,7 +3191,7 @@
         </div>
     </div>
 
-    <script type="module" src="/js/main.js?v=18"></script>
+    <script type="module" src="/js/main.js?v=19"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">

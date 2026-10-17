@@ -482,8 +482,12 @@ async function proceedWithRouteChange(path) {
     // VOD tab is visible to all (active for both catalog and item details)
     if (UIElements.tabVod) UIElements.tabVod.classList.toggle('active', isVod || isVodDetails);
     if (UIElements.mobileNavVod) UIElements.mobileNavVod.classList.toggle('active', isVod || isVodDetails);
-    // Dashboard active state (uses native .tab-button.active)
-    UIElements.userDisplay?.classList.toggle('active', isDashboard);
+    // Dashboard active state
+    const brandTitle = UIElements.brandLogoBtn?.querySelector('h1') || document.querySelector('#brand-logo-btn h1');
+    if (brandTitle) {
+        brandTitle.classList.toggle('text-blue-400', isDashboard);
+        brandTitle.classList.toggle('text-white', !isDashboard);
+    }
     UIElements.mobileNavDashboard?.classList.toggle('active', isDashboard);
 
     // --- END ADD ---

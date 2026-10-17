@@ -31,7 +31,14 @@ const initializeUIElements = () => {
     UIElements.guideDateDisplay = document.getElementById('guide-date-display');
     UIElements.stickyCorner = document.querySelector('.sticky-corner');
     UIElements.channelColumnResizeHandle = document.getElementById('channel-column-resize-handle');
+    UIElements.brandLogoBtn = document.getElementById('brand-logo-btn');
     UIElements.userDisplay = document.getElementById('user-display');
+    UIElements.userMenuContainer = document.getElementById('user-menu-container');
+    UIElements.userDropdownMenu = document.getElementById('user-dropdown-menu');
+    UIElements.userDropdownDashboardBtn = document.getElementById('user-dropdown-dashboard-btn');
+    UIElements.userMenuChevron = document.getElementById('user-menu-chevron');
+    UIElements.userAvatarInitial = document.getElementById('user-avatar-initial');
+    UIElements.userDropdownName = document.getElementById('user-dropdown-name');
     UIElements.userManagementSection = document.getElementById('user-management-section');
     UIElements.userEditorSourceList = document.getElementById('user-editor-source-list');
     // NOTE: dvrSettingsSection is the entire settings div, not a separate element. Logic will handle visibility.
@@ -319,7 +326,15 @@ const showApp = (user) => {
     } else if (UIElements.userDisplay) {
         UIElements.userDisplay.textContent = user.username;
     }
-    UIElements.userDisplay.classList.remove('hidden');
+    const userAvatarInitial = document.getElementById('user-avatar-initial');
+    if (userAvatarInitial) {
+        userAvatarInitial.textContent = (user.username || 'U').charAt(0).toUpperCase();
+    }
+    const userDropdownName = document.getElementById('user-dropdown-name');
+    if (userDropdownName) {
+        userDropdownName.textContent = user.username;
+    }
+    UIElements.userDisplay?.classList.remove('hidden');
     document.querySelectorAll('img[src*="viniplay.png"]').forEach(img => {
         img.src = withBase('/viniplay.png');
     });

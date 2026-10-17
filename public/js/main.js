@@ -450,10 +450,87 @@ function setupCoreEventListeners() {
     UIElements.mobileNavPlayer?.addEventListener('click', () => switchTab('player'));
     UIElements.mobileNavDvr?.addEventListener('click', () => switchTab('dvr'));
     UIElements.mobileNavVod?.addEventListener('click', () => switchTab('vod'));
-    UIElements.userDisplay?.addEventListener('click', (e) => {
+    // Brand Logo -> Dashboard
+    const handleBrandClick = (e) => {
         e.preventDefault();
+        closeUserDropdown();
+        switchTab('dashboard');
+    };
+    UIElements.brandLogoBtn?.addEventListener('click', handleBrandClick);
+    UIElements.brandLogoBtn?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            handleBrandClick(e);
+        }
+    });
+
+    // User Dropdown Logic
+    const openUserDropdown = () => {
+        const menu = UIElements.userDropdownMenu || document.getElementById('user-dropdown-menu');
+        const chevron = UIElements.userMenuChevron || document.getElementById('user-menu-chevron');
+        const btn = UIElements.userDisplay || document.getElementById('user-display');
+        if (!menu) return;
+        menu.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            menu.classList.remove('opacity-0', 'scale-95');
+            menu.classList.add('opacity-100', 'scale-100');
+        });
+        btn?.setAttribute('aria-expanded', 'true');
+        chevron?.classList.add('rotate-180');
+    };
+
+    const closeUserDropdown = () => {
+        const menu = UIElements.userDropdownMenu || document.getElementById('user-dropdown-menu');
+        const chevron = UIElements.userMenuChevron || document.getElementById('user-menu-chevron');
+        const btn = UIElements.userDisplay || document.getElementById('user-display');
+        if (!menu || menu.classList.contains('hidden')) return;
+        menu.classList.remove('opacity-100', 'scale-100');
+        menu.classList.add('opacity-0', 'scale-95');
+        btn?.setAttribute('aria-expanded', 'false');
+        chevron?.classList.remove('rotate-180');
+        setTimeout(() => {
+            if (btn?.getAttribute('aria-expanded') !== 'true') {
+                menu.classList.add('hidden');
+            }
+        }, 150);
+    };
+
+    const toggleUserDropdown = (e) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+        const menu = UIElements.userDropdownMenu || document.getElementById('user-dropdown-menu');
+        if (!menu) return;
+        if (menu.classList.contains('hidden') || menu.classList.contains('opacity-0')) {
+            openUserDropdown();
+        } else {
+            closeUserDropdown();
+        }
+    };
+
+    // User button click toggles dropdown
+    UIElements.userDisplay?.addEventListener('click', toggleUserDropdown);
+
+    // Dropdown "Mi Dashboard" item
+    const dropdownDashboardBtn = document.getElementById('user-dropdown-dashboard-btn');
+    dropdownDashboardBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeUserDropdown();
         switchTab('dashboard');
     });
+
+    // Close user dropdown when clicking outside or pressing Escape
+    document.addEventListener('click', (e) => {
+        const container = UIElements.userMenuContainer || document.getElementById('user-menu-container');
+        if (container && !container.contains(e.target)) {
+            closeUserDropdown();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeUserDropdown();
+        }
+    });
+
     UIElements.mobileNavDashboard?.addEventListener('click', () => switchTab('dashboard'));
 
     UIElements.mobileNavActivity?.addEventListener('click', () => switchTab('activity')); // NEW
