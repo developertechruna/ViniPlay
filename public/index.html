@@ -965,6 +965,31 @@
             scrollbar-width: none;
         }
 
+        /* User Dropdown Menu */
+        #user-dropdown-menu {
+            display: none;
+        }
+        #user-dropdown-menu.open {
+            display: block !important;
+            animation: fadeInUserDropdown 0.15s ease-out forwards;
+        }
+        @keyframes fadeInUserDropdown {
+            from {
+                opacity: 0;
+                transform: translateY(-4px) scale(0.97);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        #user-menu-chevron {
+            transition: transform 0.2s ease;
+        }
+        #user-menu-chevron.open {
+            transform: rotate(180deg);
+        }
+
         .transcode-indicator {
             width: 12px;
             height: 12px;
@@ -1365,7 +1390,7 @@
 
                     <!-- Dropdown Menu -->
                     <div id="user-dropdown-menu"
-                        class="hidden absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl py-1.5 z-50 transform opacity-0 scale-95 transition-all duration-150">
+                        class="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl py-1.5 z-50">
                         <div class="px-3.5 py-2 border-b border-gray-700/60">
                             <p class="text-[11px] text-gray-400 uppercase tracking-wider font-semibold">Conectado como</p>
                             <p id="user-dropdown-name" class="text-sm font-bold text-white truncate"></p>
@@ -1374,14 +1399,14 @@
                             <button id="user-dropdown-dashboard-btn" type="button"
                                 class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-700/70 rounded-lg transition-colors cursor-pointer text-left">
                                 <span data-icon="dashboard" class="w-4 h-4 text-blue-400"></span>
-                                <span>Mi Dashboard</span>
+                                <span>Dashboard</span>
                             </button>
                             <button id="logout-btn" type="button"
-                                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer text-left">
-                                <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer text-left">
+                                <svg class="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
-                                <span>Cerrar Sesión</span>
+                                <span>Logout</span>
                             </button>
                         </div>
                     </div>
@@ -3244,7 +3269,7 @@
         </div>
     </div>
 
-    <script type="module" src="/js/main.js?v=20"></script>
+    <script type="module" src="/js/main.js?v=21"></script>
 
     <div id="processing-status-modal"
         class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">

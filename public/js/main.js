@@ -465,51 +465,57 @@ function setupCoreEventListeners() {
 
     // User Dropdown Logic
     const openUserDropdown = () => {
-        const menu = UIElements.userDropdownMenu || document.getElementById('user-dropdown-menu');
-        const chevron = UIElements.userMenuChevron || document.getElementById('user-menu-chevron');
-        const btn = UIElements.userDisplay || document.getElementById('user-display');
+        const menu = document.getElementById('user-dropdown-menu');
+        const chevron = document.getElementById('user-menu-chevron');
+        const btn = document.getElementById('user-display');
         if (!menu) return;
-        menu.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            menu.classList.remove('opacity-0', 'scale-95');
-            menu.classList.add('opacity-100', 'scale-100');
-        });
+        menu.classList.add('open');
         btn?.setAttribute('aria-expanded', 'true');
-        chevron?.classList.add('rotate-180');
+        chevron?.classList.add('open');
     };
 
     const closeUserDropdown = () => {
-        const menu = UIElements.userDropdownMenu || document.getElementById('user-dropdown-menu');
-        const chevron = UIElements.userMenuChevron || document.getElementById('user-menu-chevron');
-        const btn = UIElements.userDisplay || document.getElementById('user-display');
-        if (!menu || menu.classList.contains('hidden')) return;
-        menu.classList.remove('opacity-100', 'scale-100');
-        menu.classList.add('opacity-0', 'scale-95');
+        const menu = document.getElementById('user-dropdown-menu');
+        const chevron = document.getElementById('user-menu-chevron');
+        const btn = document.getElementById('user-display');
+        if (!menu) return;
+        menu.classList.remove('open');
         btn?.setAttribute('aria-expanded', 'false');
-        chevron?.classList.remove('rotate-180');
-        setTimeout(() => {
-            if (btn?.getAttribute('aria-expanded') !== 'true') {
-                menu.classList.add('hidden');
-            }
-        }, 150);
+        chevron?.classList.remove('open');
     };
 
     const toggleUserDropdown = (e) => {
-        e?.preventDefault();
-        e?.stopPropagation();
-        const menu = UIElements.userDropdownMenu || document.getElementById('user-dropdown-menu');
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        const menu = document.getElementById('user-dropdown-menu');
         if (!menu) return;
-        if (menu.classList.contains('hidden') || menu.classList.contains('opacity-0')) {
-            openUserDropdown();
-        } else {
+        if (menu.classList.contains('open')) {
             closeUserDropdown();
+        } else {
+            openUserDropdown();
         }
     };
 
-    // User button click toggles dropdown
-    UIElements.userDisplay?.addEventListener('click', toggleUserDropdown);
+    // User button click toggles dropdown - direct listener and delegation
+    const userDisplayBtn = document.getElementById('user-display');
+    if (userDisplayBtn) {
+        userDisplayBtn.onclick = toggleUserDropdown;
+    }
+    if (UIElements.userDisplay && UIElements.userDisplay !== userDisplayBtn) {
+        UIElements.userDisplay.onclick = toggleUserDropdown;
+    }
 
-    // Dropdown "Mi Dashboard" item
+    const userMenuContainer = document.getElementById('user-menu-container');
+    userMenuContainer?.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('#user-display');
+        if (toggleBtn) {
+            toggleUserDropdown(e);
+        }
+    });
+
+    // Dropdown "Dashboard" item
     const dropdownDashboardBtn = document.getElementById('user-dropdown-dashboard-btn');
     dropdownDashboardBtn?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -519,7 +525,7 @@ function setupCoreEventListeners() {
 
     // Close user dropdown when clicking outside or pressing Escape
     document.addEventListener('click', (e) => {
-        const container = UIElements.userMenuContainer || document.getElementById('user-menu-container');
+        const container = document.getElementById('user-menu-container');
         if (container && !container.contains(e.target)) {
             closeUserDropdown();
         }
